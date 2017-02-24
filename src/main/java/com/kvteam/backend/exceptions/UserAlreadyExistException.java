@@ -1,4 +1,4 @@
-package com.kvteam.backend.Exceptions;
+package com.kvteam.backend.exceptions;
 
 /**
  * Created by maxim on 19.02.17.

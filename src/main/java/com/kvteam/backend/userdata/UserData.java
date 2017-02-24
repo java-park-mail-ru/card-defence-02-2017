@@ -11,8 +11,6 @@ public class UserData {
     private String email = "";
     private UUID sessionID = null;
 
-    public UserData(){
-    }
 
     public UserData(
             String username ,

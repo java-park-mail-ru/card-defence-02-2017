@@ -19,8 +19,8 @@ public class UserAccount {
         this.email = email;
     }
 
-    public UUID authenticate(String password){
-        if(this.password.equals(password)){
+    public UUID authenticate(String passwd){
+        if(this.password.equals(passwd)){
             sessionID = UUID.randomUUID();
             return sessionID;
         }else{
@@ -28,14 +28,14 @@ public class UserAccount {
         }
     }
 
-    public boolean checkSession(UUID sessionID){
+    public boolean checkSession(UUID sessID){
         return this.sessionID != null
-             && this.sessionID.equals(sessionID);
+             && this.sessionID.equals(sessID);
     }
 
-    public void endSession(UUID sessionID){
+    public void endSession(UUID sessID){
         if(this.sessionID != null
-                && this.sessionID.equals(sessionID)){
+                && this.sessionID.equals(sessID)){
             this.sessionID = null;
         }
     }

@@ -1,6 +1,6 @@
 package com.kvteam.backend;
 
-import com.kvteam.backend.Exceptions.UserAlreadyExistException;
+import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.userdata.UserAccount;
 import com.kvteam.backend.userdata.UserData;
 import org.springframework.stereotype.Service;
