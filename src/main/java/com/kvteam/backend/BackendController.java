@@ -35,7 +35,8 @@ public class BackendController {
                 final Gson gson = new GsonBuilder().create();
                 userData = gson.fromJson(reader, UserData.class);
             }
-        }catch(IOException ignored){
+        }catch(IOException
+                | NumberFormatException ignored){
         }
         return userData;
     }
@@ -121,7 +122,7 @@ public class BackendController {
 
         UserData answerData = null;
         if(!userData.getUsername().isEmpty()
-               && userData.getSessionID() != null) {
+                && userData.getSessionID() != null) {
             final boolean isLoggedIn =
                     accountService.isLoggedIn(userData.getUsername(), userData.getSessionID());
 
@@ -175,5 +176,27 @@ public class BackendController {
                 "";
     }
 
+
+    @RequestMapping(path = "/api/editaccount", method = RequestMethod.POST, produces = "application/json")
+    public String editAccount(
+            @RequestBody String body,
+            HttpServletResponse response) {
+        final UserData userData = parseUserData(body);
+        if(userData == null){
+            response.setStatus(HttpStatus.BAD_REQUEST_400);
+            return "";
+        }
+
+        try {
+            accountService.editAccount(
+                    userData.getUsername(),
+                    userData.getSessionID(),
+                    userData.getEmail(),
+                    userData.getPassword());
+        }catch (AccessDeniedException e){
+            response.setStatus(HttpStatus.FORBIDDEN_403);
+        }
+        return "";
+    }
 
 }

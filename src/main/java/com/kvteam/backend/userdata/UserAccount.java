@@ -30,7 +30,7 @@ public class UserAccount {
 
     public boolean checkSession(UUID sessID){
         return this.sessionID != null
-             && this.sessionID.equals(sessID);
+                && this.sessionID.equals(sessID);
     }
 
     public void endSession(UUID sessID){
@@ -46,5 +46,13 @@ public class UserAccount {
 
     public String getUsername(){
         return username;
+    }
+
+    public void setEmail(String em) {
+        email = em;
+    }
+
+    public void setPassword(String newPassword){
+        this.password = newPassword;
     }
 }

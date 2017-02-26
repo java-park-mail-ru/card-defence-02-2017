@@ -3,15 +3,13 @@ package com.kvteam.backend;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.userdata.UserAccount;
 import com.kvteam.backend.userdata.UserData;
+import com.sun.istack.internal.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Created by maxim on 19.02.17.
- */
 @Service
 public class AccountService {
     private Map<String, UserAccount> users = new HashMap<>();
@@ -54,6 +52,24 @@ public class AccountService {
     public void tryLogout(String username, UUID sessionID){
         if(users.containsKey(username)){
             users.get(username).endSession(sessionID);
+        }
+    }
+
+    public void editAccount(
+            String username,
+            UUID sessionID,
+            String newEmail,
+            String newPassword)
+            throws  AccessDeniedException{
+        if(isLoggedIn(username, sessionID)){
+            if(!newPassword.isEmpty()){
+                users.get(username).setPassword(newPassword);
+            }
+            if(!newEmail.isEmpty()){
+                users.get(username).setEmail(newEmail);
+            }
+        }else{
+            throw new AccessDeniedException();
         }
     }
 
