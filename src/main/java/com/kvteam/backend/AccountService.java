@@ -3,7 +3,6 @@ package com.kvteam.backend;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.userdata.UserAccount;
 import com.kvteam.backend.userdata.UserData;
-import com.sun.istack.internal.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;

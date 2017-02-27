@@ -64,14 +64,18 @@ public class BackendController {
             @RequestBody String body,
             HttpServletResponse response) {
         final UserData userData = parseUserData(body);
-        if(userData == null){
+        if(userData == null
+                || userData.getUsername().isEmpty()
+                || userData.getPassword().isEmpty()){
             response.setStatus(HttpStatus.BAD_REQUEST_400);
             return "";
         }
         //tryLogout(session);
-        accountService.tryLogout(
-                userData.getUsername(),
-                userData.getSessionID());
+        if(userData.getSessionID() != null) {
+            accountService.tryLogout(
+                    userData.getUsername(),
+                    userData.getSessionID());
+        }
 
         UserData answerData = null;
         final UUID sessionID = accountService.login(userData.getUsername(), userData.getPassword());
@@ -98,7 +102,9 @@ public class BackendController {
         //session.invalidate();
 
         final UserData userData = parseUserData(body);
-        if(userData == null){
+        if(userData == null
+                || userData.getUsername().isEmpty()
+                || userData.getSessionID() == null){
             response.setStatus(HttpStatus.BAD_REQUEST_400);
             return "";
         }
@@ -115,29 +121,26 @@ public class BackendController {
         //Object attrUsername = session.getAttribute("username");
         //Object attrSessionID = session.getAttribute("sessionID");
         final UserData userData = parseUserData(body);
-        if(userData == null){
+        if(userData == null
+                || userData.getUsername().isEmpty()
+                || userData.getSessionID() == null){
             response.setStatus(HttpStatus.BAD_REQUEST_400);
             return "";
         }
 
-        UserData answerData = null;
         if(!userData.getUsername().isEmpty()
                 && userData.getSessionID() != null) {
             final boolean isLoggedIn =
                     accountService.isLoggedIn(userData.getUsername(), userData.getSessionID());
-
             if(isLoggedIn){
                 response.setStatus(HttpStatus.OK_200);
-                answerData = accountService.get(userData.getUsername());
             }else{
                 response.setStatus(HttpStatus.FORBIDDEN_403);
             }
         }else{
             response.setStatus(HttpStatus.BAD_REQUEST_400);
         }
-        return answerData != null ?
-                (new Gson()).toJson(answerData):
-                "";
+        return "";
     }
 
     @RequestMapping(path = "/api/register", method = RequestMethod.POST, produces = "application/json")
@@ -145,14 +148,18 @@ public class BackendController {
             @RequestBody String body,
             HttpServletResponse response) {
         final UserData userData = parseUserData(body);
-        if(userData == null){
+        if(userData == null
+                || userData.getUsername().isEmpty()
+                || userData.getPassword().isEmpty()){
             response.setStatus(HttpStatus.BAD_REQUEST_400);
             return "";
         }
         //tryLogout(session);
-        accountService.tryLogout(
-                userData.getUsername(),
-                userData.getSessionID());
+        if(userData.getSessionID() != null) {
+            accountService.tryLogout(
+                    userData.getUsername(),
+                    userData.getSessionID());
+        }
 
         UserData answerData = null;
         try {
@@ -197,6 +204,23 @@ public class BackendController {
             response.setStatus(HttpStatus.FORBIDDEN_403);
         }
         return "";
+    }
+
+    @RequestMapping(path = "/api/getaccount", method = RequestMethod.POST, produces = "application/json")
+    public String getAccount(
+            @RequestBody String body,
+            HttpServletResponse response) {
+        final UserData userData = parseUserData(body);
+        if(userData == null
+                || userData.getUsername().isEmpty()){
+            response.setStatus(HttpStatus.BAD_REQUEST_400);
+            return "";
+        }
+        final UserData answerData = accountService.get(userData.getUsername());
+        response.setStatus(answerData == null ? HttpStatus.NOT_FOUND_404 : HttpStatus.OK_200);
+        return answerData != null ?
+                (new Gson()).toJson(answerData):
+                "";
     }
 
 }
