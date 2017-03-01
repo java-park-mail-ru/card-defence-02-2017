@@ -16,8 +16,8 @@ public class AccountService {
     private Map<String, UserAccount> users = new HashMap<>();
 
     @Nullable
-    public UserData get(@NotNull String username){
-        if(users.containsKey(username)){
+    public UserData get(@NotNull String username) {
+        if (users.containsKey(username)) {
             return new UserData(
                     users.get(username).getUsername(),
                     null,
@@ -27,8 +27,8 @@ public class AccountService {
         return null;
     }
 
-    public boolean add(@NotNull UserData account){
-        if(users.containsKey(account.getUsername())){
+    public boolean add(@NotNull UserData account) {
+        if (users.containsKey(account.getUsername())) {
             return false;
         }
         users.put(account.getUsername(),
@@ -41,20 +41,20 @@ public class AccountService {
     }
 
     @Nullable
-    public UUID login(@NotNull String username, @NotNull String password){
+    public UUID login(@NotNull String username, @NotNull String password) {
         UUID sessionID = null;
-        if(users.containsKey(username)){
+        if (users.containsKey(username)) {
             sessionID = users.get(username).authenticate(password);
         }
         return sessionID;
     }
 
-    public boolean isLoggedIn(@NotNull String username, @Nullable UUID sessionID){
+    public boolean isLoggedIn(@NotNull String username, @Nullable UUID sessionID) {
         return users.containsKey(username) && users.get(username).checkSession(sessionID);
     }
 
-    public void tryLogout(@NotNull String username, @Nullable UUID sessionID){
-        if(users.containsKey(username)){
+    public void tryLogout(@NotNull String username, @Nullable UUID sessionID) {
+        if (users.containsKey(username)) {
             users.get(username).endSession(sessionID);
         }
     }
@@ -64,16 +64,16 @@ public class AccountService {
             @Nullable UUID sessionID,
             @Nullable String newEmail,
             @Nullable String newPassword)
-            throws  AccessDeniedException{
-        if(sessionID != null
-                && isLoggedIn(username, sessionID)){
-            if(newPassword != null){
+            throws AccessDeniedException {
+        if (sessionID != null
+                && isLoggedIn(username, sessionID)) {
+            if (newPassword != null) {
                 users.get(username).setPassword(newPassword);
             }
-            if(newEmail != null){
+            if (newEmail != null) {
                 users.get(username).setEmail(newEmail);
             }
-        }else{
+        } else {
             throw new AccessDeniedException();
         }
     }

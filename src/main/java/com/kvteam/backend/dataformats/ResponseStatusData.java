@@ -20,15 +20,16 @@ public class ResponseStatusData {
     @JsonCreator
     public ResponseStatusData(
             @JsonProperty("code") int statusCode,
-            @JsonProperty("message") String mess){
+            @JsonProperty("message") String mess) {
         code = statusCode;
         message = mess;
     }
 
-    public int getCode(){
+    public int getCode() {
         return code;
     }
-    public String getMessage(){
+
+    public String getMessage() {
         return message;
     }
 }

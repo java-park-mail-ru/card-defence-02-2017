@@ -23,33 +23,34 @@ public class UserAccount {
     }
 
     @Nullable
-    public UUID authenticate(@NotNull String passwd){
-        if(this.password.equals(passwd)){
+    public UUID authenticate(@NotNull String passwd) {
+        if (this.password.equals(passwd)) {
             sessionID = UUID.randomUUID();
             return sessionID;
-        }else{
+        } else {
             return null;
         }
     }
 
-    public boolean checkSession(@Nullable UUID sessID){
+    public boolean checkSession(@Nullable UUID sessID) {
         return this.sessionID != null
                 && this.sessionID.equals(sessID);
     }
 
-    public void endSession(@Nullable UUID sessID){
-        if(this.sessionID != null
-                && this.sessionID.equals(sessID)){
+    public void endSession(@Nullable UUID sessID) {
+        if (this.sessionID != null
+                && this.sessionID.equals(sessID)) {
             this.sessionID = null;
         }
     }
 
     @Nullable
-    public String getEmail(){
+    public String getEmail() {
         return email;
     }
+
     @NotNull
-    public String getUsername(){
+    public String getUsername() {
         return username;
     }
 
@@ -57,7 +58,7 @@ public class UserAccount {
         email = em;
     }
 
-    public void setPassword(@NotNull String newPassword){
+    public void setPassword(@NotNull String newPassword) {
         this.password = newPassword;
     }
 }

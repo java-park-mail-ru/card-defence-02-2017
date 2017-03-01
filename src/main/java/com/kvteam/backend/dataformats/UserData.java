@@ -18,10 +18,10 @@ public class UserData {
 
     @JsonCreator
     public UserData(
-            @JsonProperty("username") @NotNull String username ,
+            @JsonProperty("username") @NotNull String username,
             @JsonProperty("password") @Nullable String password,
             @JsonProperty("email") @Nullable String email,
-            @JsonProperty("sessionID") @Nullable UUID sessionID){
+            @JsonProperty("sessionID") @Nullable UUID sessionID) {
         this.username = username;
         this.password = password;
         this.email = email;
@@ -29,17 +29,22 @@ public class UserData {
     }
 
     @NotNull
-    public String getUsername(){
+    public String getUsername() {
         return username;
     }
+
     @Nullable
-    public String getPassword(){
+    public String getPassword() {
         return password;
     }
+
     @Nullable
-    public String getEmail(){
+    public String getEmail() {
         return email;
     }
+
     @Nullable
-    public UUID getSessionID() { return sessionID;}
+    public UUID getSessionID() {
+        return sessionID;
+    }
 }
