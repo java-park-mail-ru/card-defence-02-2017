@@ -2,9 +2,8 @@ package com.kvteam.backend.dataformats;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sun.istack.internal.NotNull;
-import com.sun.istack.internal.Nullable;
-
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
 /**
@@ -12,8 +11,11 @@ import java.util.UUID;
  */
 public class UserData {
     private String username = null;
+    @Nullable
     private String password = null;
+    @Nullable
     private String email = null;
+    @Nullable
     private UUID sessionID = null;
 
     @JsonCreator

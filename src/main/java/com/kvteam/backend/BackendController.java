@@ -3,7 +3,7 @@ package com.kvteam.backend;
 import com.kvteam.backend.dataformats.ResponseStatusData;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.dataformats.UserData;
-import com.sun.istack.internal.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

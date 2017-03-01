@@ -3,8 +3,8 @@ package com.kvteam.backend;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.users.UserAccount;
 import com.kvteam.backend.dataformats.UserData;
-import com.sun.istack.internal.NotNull;
-import com.sun.istack.internal.Nullable;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
