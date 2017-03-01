@@ -27,9 +27,9 @@ public class AccountService {
         return null;
     }
 
-    public void add(@NotNull UserData account) throws UserAlreadyExistException{
+    public boolean add(@NotNull UserData account){
         if(users.containsKey(account.getUsername())){
-            throw new UserAlreadyExistException();
+            return false;
         }
         users.put(account.getUsername(),
                 new UserAccount(
@@ -37,6 +37,7 @@ public class AccountService {
                         account.getPassword(),
                         account.getEmail()
                 ));
+        return true;
     }
 
     @Nullable

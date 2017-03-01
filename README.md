@@ -7,7 +7,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
 указанным в документации. В теле ответа будет JSON
 {"code": 400, "message": "invalid request"} </p>
 
-<h4 style="">/api/register</h4> <br>
+<h4 style="">POST /api/account</h4> <br>
 <p>Регистрация пользователя с последующим логином</p>
 <p>Запрос должен содержать поля:</p>
 <p style="margin-left: 40px;">{"username" : ..., "password": ..., "email":...}</p>
@@ -23,7 +23,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
 <p>Формат ответа при 403, 409 коде:<p>
 <p style="margin-left: 40px;">{"code" : ..., "message": ...}</p>
 
-<h4 style="">/api/login</h4> 
+<h4 style="">POST /api/login</h4> 
 <p>Логин пользователя</p>
 <p>Запрос должен быть вида:</p>
 <p style="margin-left: 40px;">{"username" : ..., "password": ...}</p>
@@ -37,7 +37,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
 </p>Формат ответа при 403 коде:</pi>
 <p style="margin-left: 40px;">{"code" : ..., "message": ...}</p>
 
-<h4 style="">/api/logout</h4>
+<h4 style="">POST /api/logout</h4>
 <p>Логаут пользователя</p>
 <p>Запрос должен быть вида:</p>
 <p style="margin-left: 40px;">{"username" : ..., "sessionID": ...}</p>
@@ -47,7 +47,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
 </ol>
 <p style="margin-left: 40px;"> {"code" : 200, "message": "success"} </p>
 
-<h4 style="">/api/isloggedin</h4>
+<h4 style="">POST /api/isloggedin</h4>
 <p>Проверка, залогинен ли пользователь</p>
 <p>Запрос должен быть вида:</p>
 <p style="margin-left: 40px;">{"username" : ..., "sessionID": ...}</p>
@@ -62,7 +62,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
 <p style="margin-left: 40px;">{"code" : 403, "message": "Access denied"}</p>
 
 
-<h4 style="">/api/editaccount</h4>
+<h4 style="">PUT /api/account</h4>
 <p>Изменение данных пользователя</p>
 <p>Запрос должен быть вида:</p>
 <p style="margin-left: 40px;">{"username" : ..., "sessionID": ..., "email": (необязательный), "password": (необязательный)}</p>
@@ -75,10 +75,8 @@ KVTeam: Каширин Максим, Виноградов Андрей
 <p style="margin-left: 40px;">{"code" : ..., "message": ...}</p>
 
 
-<h4 style="">/api/getaccount</h4>
+<h4 style="">GET /api/account?username=...</h4>
 <p>Получение данных о пользователе</p>
-<p>Запрос должен быть вида:</p>
-<p style="margin-left: 40px;">{"username" : ...}</p>
 <p>Результатом запроса от бекенда будет:</p>
 <ol> 
      <li>200 - пользователь найден</li>

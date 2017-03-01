@@ -1,5 +1,7 @@
 package com.kvteam.backend.dataformats;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.eclipse.jetty.http.HttpStatus;
 
 /**
@@ -15,8 +17,11 @@ public class ResponseStatusData {
     private int code = HttpStatus.OK_200;
     private String message = "Internal error";
 
-    public ResponseStatusData(int c, String mess){
-        code = c;
+    @JsonCreator
+    public ResponseStatusData(
+            @JsonProperty("code") int statusCode,
+            @JsonProperty("message") String mess){
+        code = statusCode;
         message = mess;
     }
 
