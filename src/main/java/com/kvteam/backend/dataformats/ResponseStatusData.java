@@ -8,11 +8,20 @@ import org.springframework.http.HttpStatus;
  * Created by maxim on 28.02.17.
  */
 public class ResponseStatusData {
-    public static final ResponseStatusData SUCCESS = new ResponseStatusData(HttpStatus.OK.value(), "success");
-    public static final ResponseStatusData INVALID_REQUEST = new ResponseStatusData(HttpStatus.BAD_REQUEST.value(), "invalid request");
-    public static final ResponseStatusData ACCESS_DENIED = new ResponseStatusData(HttpStatus.FORBIDDEN.value(), "Access denied");
-    public static final ResponseStatusData NOT_FOUND = new ResponseStatusData(HttpStatus.NOT_FOUND.value(), "object not found");
-    public static final ResponseStatusData CONFLICT = new ResponseStatusData(HttpStatus.CONFLICT.value(), "already exists");
+    public static final ResponseStatusData SUCCESS =
+            new ResponseStatusData(HttpStatus.OK.value(), "success");
+
+    public static final ResponseStatusData INVALID_REQUEST =
+            new ResponseStatusData(HttpStatus.BAD_REQUEST.value(), "invalid request");
+
+    public static final ResponseStatusData ACCESS_DENIED =
+            new ResponseStatusData(HttpStatus.FORBIDDEN.value(), "Access denied");
+
+    public static final ResponseStatusData NOT_FOUND =
+            new ResponseStatusData(HttpStatus.NOT_FOUND.value(), "object not found");
+
+    public static final ResponseStatusData CONFLICT =
+            new ResponseStatusData(HttpStatus.CONFLICT.value(), "already exists");
 
     private int code = HttpStatus.OK.value();
     private String message = "Internal error";

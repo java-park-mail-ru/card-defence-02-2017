@@ -174,9 +174,9 @@ public class BackendController {
         return answer;
     }
 
-    @RequestMapping(path = "/api/account", method = RequestMethod.GET, produces = "application/json")
+    @RequestMapping(path = "/api/account/{username}", method = RequestMethod.GET, produces = "application/json")
     public ResponseEntity<Object> getAccount(
-            @RequestParam("username") String username,
+            @PathVariable("username") String username,
             HttpServletResponse response) {
         if (isStringNullOrEmpty(username)) {
             response.setStatus(HttpStatus.BAD_REQUEST.value());
