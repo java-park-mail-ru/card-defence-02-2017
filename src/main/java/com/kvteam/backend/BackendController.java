@@ -3,15 +3,17 @@ package com.kvteam.backend;
 import com.kvteam.backend.dataformats.ResponseStatusData;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.dataformats.UserData;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.util.UUID;
 
-
+@CrossOrigin
 @RestController
 public class BackendController {
     private AccountService accountService;
@@ -24,153 +26,135 @@ public class BackendController {
         return str == null || str.isEmpty();
     }
 
+    private void tryLogout(@NotNull HttpSession session){
+        final UUID oldSessionID = (UUID)session.getAttribute("sessionID");
+        final String oldUsername = (String)session.getAttribute("username");
+        if (oldSessionID != null
+                && isStringNullOrEmpty(oldUsername)) {
+            accountService.tryLogout(
+                    oldUsername,
+                    oldSessionID);
+            session.removeAttribute("sessionID");
+            session.removeAttribute("username");
+        }
+    }
+
     @RequestMapping(path = "/api/login", method = RequestMethod.POST, produces = "application/json")
-    public ResponseEntity<Object> login(
+    public ResponseStatusData login(
             @RequestBody UserData userData,
-            HttpServletResponse response) {
+            HttpServletResponse response,
+            HttpSession session) {
         if (userData == null
                 || isStringNullOrEmpty(userData.getUsername())
                 || isStringNullOrEmpty(userData.getPassword())) {
             response.setStatus(HttpStatus.BAD_REQUEST.value());
-
-            return new ResponseEntity<>(
-                    ResponseStatusData.INVALID_REQUEST,
-                    HttpStatus.BAD_REQUEST);
+            return ResponseStatusData.INVALID_REQUEST;
         }
-        if (userData.getSessionID() != null) {
-            accountService.tryLogout(
-                    userData.getUsername(),
-                    userData.getSessionID());
-        }
+        tryLogout(session);
 
-        UserData answerData = null;
+        final ResponseStatusData answerData;
         final UUID sessionID = accountService.login(userData.getUsername(), userData.getPassword());
         if (sessionID != null) {
             response.setStatus(HttpStatus.OK.value());
-            answerData = new UserData(
-                    userData.getUsername(),
-                    null,
-                    null,
-                    sessionID);
+            session.setAttribute("sessionID", sessionID);
+            session.setAttribute("username", userData.getUsername());
+            answerData = ResponseStatusData.SUCCESS;
         } else {
             response.setStatus(HttpStatus.FORBIDDEN.value());
+            answerData = ResponseStatusData.ACCESS_DENIED;
         }
 
-        return answerData != null ?
-                new ResponseEntity<>(answerData, HttpStatus.OK) :
-                new ResponseEntity<>(
-                        ResponseStatusData.ACCESS_DENIED,
-                        HttpStatus.FORBIDDEN);
+        return answerData;
     }
 
-    @RequestMapping(path = "/api/logout", method = RequestMethod.POST, produces = "application/json")
-    public ResponseStatusData logout(@RequestBody UserData userData,
-                                     HttpServletResponse response) {
-        if (userData == null
-                || isStringNullOrEmpty(userData.getUsername())) {
-            response.setStatus(HttpStatus.BAD_REQUEST.value());
-            return ResponseStatusData.INVALID_REQUEST;
-        }
-        accountService.tryLogout(
-                userData.getUsername(),
-                userData.getSessionID());
+    @RequestMapping(path = "/api/logout", method = RequestMethod.GET, produces = "application/json")
+    public ResponseStatusData logout(HttpSession session) {
+        tryLogout(session);
+        session.invalidate();
         return ResponseStatusData.SUCCESS;
     }
 
-    @RequestMapping(path = "/api/isloggedin", method = RequestMethod.POST, produces = "application/json")
-    public ResponseStatusData isLoggedIn(@RequestBody UserData userData,
-                                         HttpServletResponse response) {
-        if (userData == null
-                || isStringNullOrEmpty(userData.getUsername())) {
-            response.setStatus(HttpStatus.BAD_REQUEST.value());
-            return ResponseStatusData.INVALID_REQUEST;
-        }
-
-        final boolean isLoggedIn =
-                accountService.isLoggedIn(userData.getUsername(), userData.getSessionID());
-        final ResponseStatusData answer;
-        if (isLoggedIn) {
+    @RequestMapping(path = "/api/isloggedin", method = RequestMethod.GET, produces = "application/json")
+    public ResponseStatusData isLoggedIn(HttpSession session, HttpServletResponse response) {
+        final UUID sessionID = (UUID)session.getAttribute("sessionID");
+        final String username = (String)session.getAttribute("username");
+        if (sessionID != null
+                && !isStringNullOrEmpty(username)
+                && accountService.isLoggedIn(username, sessionID)){
             response.setStatus(HttpStatus.OK.value());
-            answer = ResponseStatusData.SUCCESS;
+            return ResponseStatusData.SUCCESS;
         } else {
             response.setStatus(HttpStatus.FORBIDDEN.value());
-            answer = ResponseStatusData.ACCESS_DENIED;
+            return ResponseStatusData.ACCESS_DENIED;
         }
-
-        return answer;
     }
 
     @RequestMapping(path = "/api/account", method = RequestMethod.POST, produces = "application/json")
-    public ResponseEntity<Object> register(
+    public ResponseStatusData register(
             @RequestBody UserData userData,
-            HttpServletResponse response) {
+            HttpServletResponse response,
+            HttpSession session) {
         if (userData == null
                 || isStringNullOrEmpty(userData.getUsername())
                 || isStringNullOrEmpty(userData.getPassword())) {
             response.setStatus(HttpStatus.BAD_REQUEST.value());
-            return new ResponseEntity<>(
-                    ResponseStatusData.INVALID_REQUEST,
-                    HttpStatus.BAD_REQUEST);
+            return ResponseStatusData.INVALID_REQUEST;
         }
-        if (userData.getSessionID() != null) {
-            accountService.tryLogout(
-                    userData.getUsername(),
-                    userData.getSessionID());
-        }
+        tryLogout(session);
 
-        UserData answerData = null;
-        ResponseEntity<Object> errorAnswer = null;
+        final ResponseStatusData answer;
 
         // true - если добавлен, false - если уже такой есть
         if (accountService.add(userData)) {
             final UUID sessionID = accountService.login(userData.getUsername(), userData.getPassword());
             if (sessionID != null) {
                 response.setStatus(HttpStatus.OK.value());
-                answerData = new UserData(
-                        userData.getUsername(),
-                        null,
-                        null,
-                        sessionID);
+                answer = ResponseStatusData.SUCCESS;
+                session.setAttribute("username", userData.getUsername());
+                session.setAttribute("sessionID", sessionID);
             } else {
                 response.setStatus(HttpStatus.FORBIDDEN.value());
-                errorAnswer = new ResponseEntity<>(
-                        ResponseStatusData.ACCESS_DENIED,
-                        HttpStatus.FORBIDDEN);
+                answer = ResponseStatusData.ACCESS_DENIED;
             }
         } else {
             response.setStatus(HttpStatus.CONFLICT.value());
-            errorAnswer = new ResponseEntity<>(
-                    ResponseStatusData.CONFLICT,
-                    HttpStatus.CONFLICT);
+            answer = ResponseStatusData.CONFLICT;
         }
-        return answerData != null ?
-                new ResponseEntity<>(answerData, HttpStatus.OK) :
-                errorAnswer;
+        return answer;
     }
 
 
     @RequestMapping(path = "/api/account", method = RequestMethod.PUT, produces = "application/json")
     public ResponseStatusData editAccount(
             @RequestBody UserData userData,
-            HttpServletResponse response) {
-        if (userData == null
-                || isStringNullOrEmpty(userData.getUsername())) {
+            HttpServletResponse response,
+            HttpSession session) {
+        if (userData == null) {
             response.setStatus(HttpStatus.BAD_REQUEST.value());
             return ResponseStatusData.INVALID_REQUEST;
         }
 
+        final UUID sessionID = (UUID)session.getAttribute("sessionID");
+        final String username = (String)session.getAttribute("username");
         ResponseStatusData answer;
-        try {
-            accountService.editAccount(
-                    userData.getUsername(),
-                    userData.getSessionID(),
-                    userData.getEmail(),
-                    userData.getPassword());
-            answer = ResponseStatusData.SUCCESS;
-        } catch (AccessDeniedException e) {
+        if (sessionID != null
+                && !isStringNullOrEmpty(username)){
+            try {
+                accountService.editAccount(
+                        username,
+                        sessionID,
+                        userData.getEmail(),
+                        userData.getPassword());
+                answer = ResponseStatusData.SUCCESS;
+            } catch (AccessDeniedException e) {
+                response.setStatus(HttpStatus.FORBIDDEN.value());
+                answer = ResponseStatusData.ACCESS_DENIED;
+            }
+        } else {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             answer = ResponseStatusData.ACCESS_DENIED;
         }
+
         return answer;
     }
 

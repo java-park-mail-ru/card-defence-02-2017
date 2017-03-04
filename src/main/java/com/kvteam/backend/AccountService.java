@@ -21,8 +21,7 @@ public class AccountService {
             return new UserData(
                     users.get(username).getUsername(),
                     null,
-                    users.get(username).getEmail(),
-                    null);
+                    users.get(username).getEmail());
         }
         return null;
     }

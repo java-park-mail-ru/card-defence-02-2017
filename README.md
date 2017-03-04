@@ -18,9 +18,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
      <li>409 - такой никнейм есть</li>
      <li>400 - ошибка во входных данных</li>
 </ol>
-<p>Формат ответа при 200 коде:<p>
-<p style="margin-left: 40px;">{"username" : ..., "sessionID": ...}</p>
-<p>Формат ответа при 403, 409 коде:<p>
+<p>Формат ответа<p>
 <p style="margin-left: 40px;">{"code" : ..., "message": ...}</p>
 
 <h4 style="">POST /api/login</h4> 
@@ -32,25 +30,19 @@ KVTeam: Каширин Максим, Виноградов Андрей
       <li>200 - логин успешен</li>
       <li>403 - доступ запрещен</li>
 </ol>
-</p>Формат ответа при 200 коде:</pi>
-<p style="margin-left: 40px;">{"username" : ..., "sessionID": ...}</p>
-</p>Формат ответа при 403 коде:</pi>
+</p>Формат ответа</pi>
 <p style="margin-left: 40px;">{"code" : ..., "message": ...}</p>
 
-<h4 style="">POST /api/logout</h4>
+<h4 style="">GET /api/logout</h4>
 <p>Логаут пользователя</p>
-<p>Запрос должен быть вида:</p>
-<p style="margin-left: 40px;">{"username" : ..., "sessionID": ...}</p>
 <p>Результатом запроса от бекенда будет:</p>
 <ol>
       <li>200 - гарантировано, что по указанным данным не будет залогиненного пользователя</li>
 </ol>
 <p style="margin-left: 40px;"> {"code" : 200, "message": "success"} </p>
 
-<h4 style="">POST /api/isloggedin</h4>
+<h4 style="">GET /api/isloggedin</h4>
 <p>Проверка, залогинен ли пользователь</p>
-<p>Запрос должен быть вида:</p>
-<p style="margin-left: 40px;">{"username" : ..., "sessionID": ...}</p>
 <p>Результатом запроса от бекенда будет:</p>
 <ol> 
      <li>200 - сессия существует</li>
@@ -65,17 +57,17 @@ KVTeam: Каширин Максим, Виноградов Андрей
 <h4 style="">PUT /api/account</h4>
 <p>Изменение данных пользователя</p>
 <p>Запрос должен быть вида:</p>
-<p style="margin-left: 40px;">{"username" : ..., "sessionID": ..., "email": (необязательный), "password": (необязательный)}</p>
+<p style="margin-left: 40px;">{"email": (необязательный), "password": (необязательный)}</p>
 <p>Результатом запроса от бекенда будет:</p>
 <ol> 
      <li>200 - данные изменены</li>
      <li>403 - запрещено менять данные(сессия не сошлась)</li>
 </ol>
-<p>Формат ответа при 403 коде:</p>
+<p>Формат ответа</p>
 <p style="margin-left: 40px;">{"code" : ..., "message": ...}</p>
 
 
-<h4 style="">GET /api/account?username=...</h4>
+<h4 style="">GET /api/account/{username}</h4>
 <p>Получение данных о пользователе</p>
 <p>Результатом запроса от бекенда будет:</p>
 <ol> 
