@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
  * Created by maxim on 19.02.17.
  */
 public class UserData {
+    @Nullable
     private String username = null;
     @Nullable
     private String password = null;
@@ -25,7 +26,7 @@ public class UserData {
         this.email = email;
     }
 
-    @NotNull
+    @Nullable
     public String getUsername() {
         return username;
     }
