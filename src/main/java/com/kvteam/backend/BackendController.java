@@ -13,9 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.util.UUID;
 
-@CrossOrigin
+
 @RestController
 public class BackendController {
+    private static final String CROSS_ORIGIN_HOST = "http://localhost:3000";
+
     private AccountService accountService;
 
     public BackendController(AccountService accountService) {
@@ -39,6 +41,9 @@ public class BackendController {
         }
     }
 
+    @CrossOrigin(
+            origins = {CROSS_ORIGIN_HOST},
+            allowCredentials = "true")
     @RequestMapping(path = "/api/login", method = RequestMethod.POST, produces = "application/json")
     public ResponseStatusData login(
             @RequestBody UserData userData,
@@ -67,6 +72,9 @@ public class BackendController {
         return answerData;
     }
 
+    @CrossOrigin(
+            origins = {CROSS_ORIGIN_HOST},
+            allowCredentials = "true")
     @RequestMapping(path = "/api/logout", method = RequestMethod.GET, produces = "application/json")
     public ResponseStatusData logout(HttpSession session) {
         tryLogout(session);
@@ -74,6 +82,9 @@ public class BackendController {
         return ResponseStatusData.SUCCESS;
     }
 
+    @CrossOrigin(
+            origins = {CROSS_ORIGIN_HOST},
+            allowCredentials = "true")
     @RequestMapping(path = "/api/isloggedin", method = RequestMethod.GET, produces = "application/json")
     public ResponseStatusData isLoggedIn(HttpSession session, HttpServletResponse response) {
         final UUID sessionID = (UUID)session.getAttribute("sessionID");
@@ -89,6 +100,9 @@ public class BackendController {
         }
     }
 
+    @CrossOrigin(
+            origins = {CROSS_ORIGIN_HOST},
+            allowCredentials = "true")
     @RequestMapping(path = "/api/account", method = RequestMethod.POST, produces = "application/json")
     public ResponseStatusData register(
             @RequestBody UserData userData,
@@ -123,7 +137,9 @@ public class BackendController {
         return answer;
     }
 
-
+    @CrossOrigin(
+            origins = {CROSS_ORIGIN_HOST},
+            allowCredentials = "true")
     @RequestMapping(path = "/api/account", method = RequestMethod.PUT, produces = "application/json")
     public ResponseStatusData editAccount(
             @RequestBody UserData userData,
@@ -158,6 +174,9 @@ public class BackendController {
         return answer;
     }
 
+    @CrossOrigin(
+            origins = {CROSS_ORIGIN_HOST},
+            allowCredentials = "true")
     @RequestMapping(path = "/api/account/{username}", method = RequestMethod.GET, produces = "application/json")
     public ResponseEntity<Object> getAccount(
             @PathVariable("username") String username,
