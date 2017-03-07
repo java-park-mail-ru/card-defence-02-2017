@@ -7,9 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class AccountService {
@@ -18,10 +16,13 @@ public class AccountService {
     @Nullable
     public UserData get(@NotNull String username) {
         if (users.containsKey(username)) {
+            final UserAccount acc = users.get(username);
             return new UserData(
-                    users.get(username).getUsername(),
+                    acc.getUsername(),
                     null,
-                    users.get(username).getEmail());
+                    acc.getEmail(),
+                    0,
+                    1);
         }
         return null;
     }
@@ -75,6 +76,27 @@ public class AccountService {
         } else {
             throw new AccessDeniedException();
         }
+    }
+
+
+    public List<UserData> getLeaders(@Nullable Integer limit){
+        limit = limit == null ? Integer.MAX_VALUE : limit;
+
+        final List<UserData> list = new ArrayList<>();
+        for (UserAccount value : users.values()) {
+            if(list.size() == limit){
+                break;
+            }
+            list.add(
+                    new UserData(value.getUsername(),
+                            null,
+                            null,
+                            0,
+                            1)
+            );
+        }
+
+        return list;
     }
 
 }

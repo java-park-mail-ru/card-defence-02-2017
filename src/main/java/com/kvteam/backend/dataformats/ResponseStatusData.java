@@ -14,6 +14,9 @@ public class ResponseStatusData {
     public static final ResponseStatusData INVALID_REQUEST =
             new ResponseStatusData(HttpStatus.BAD_REQUEST.value(), "invalid request");
 
+    public static final ResponseStatusData UNAUTHORIZED =
+            new ResponseStatusData(HttpStatus.UNAUTHORIZED.value(), "unauthorized");
+
     public static final ResponseStatusData ACCESS_DENIED =
             new ResponseStatusData(HttpStatus.FORBIDDEN.value(), "Access denied");
 

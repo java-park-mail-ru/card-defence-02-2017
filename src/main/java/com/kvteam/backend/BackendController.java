@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @CrossOrigin(
@@ -86,10 +88,10 @@ public class BackendController {
                 && !isStringNullOrEmpty(username)
                 && accountService.isLoggedIn(username, sessionID)){
             response.setStatus(HttpStatus.OK.value());
-            return ResponseStatusData.SUCCESS;
+            return new ResponseStatusData(HttpStatus.OK.value(), username);
         } else {
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            return ResponseStatusData.ACCESS_DENIED;
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return ResponseStatusData.UNAUTHORIZED;
         }
     }
 
@@ -178,6 +180,12 @@ public class BackendController {
                 new ResponseEntity<>(
                         ResponseStatusData.NOT_FOUND,
                         HttpStatus.NOT_FOUND);
+    }
+
+
+    @RequestMapping(path = "/api/leaders", method = RequestMethod.GET, produces = "application/json")
+    public List<UserData> getLeaders(@RequestParam(value = "limit", required = false) @Nullable Integer limit){
+        return  accountService.getLeaders(limit);
     }
 
 }
