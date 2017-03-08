@@ -64,7 +64,7 @@ public class BackendController {
             response.setStatus(HttpStatus.OK.value());
             session.setAttribute("sessionID", sessionID);
             session.setAttribute("username", userData.getUsername());
-            answerData = ResponseStatusData.SUCCESS;
+            answerData = new ResponseStatusData(HttpStatus.OK.value(), userData.getUsername());
         } else {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             answerData = ResponseStatusData.ACCESS_DENIED;
@@ -115,7 +115,7 @@ public class BackendController {
             final UUID sessionID = accountService.login(userData.getUsername(), userData.getPassword());
             if (sessionID != null) {
                 response.setStatus(HttpStatus.OK.value());
-                answer = ResponseStatusData.SUCCESS;
+                answer = new ResponseStatusData(HttpStatus.OK.value(), userData.getUsername());
                 session.setAttribute("username", userData.getUsername());
                 session.setAttribute("sessionID", sessionID);
             } else {
