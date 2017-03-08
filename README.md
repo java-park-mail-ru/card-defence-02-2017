@@ -49,7 +49,7 @@ KVTeam: Каширин Максим, Виноградов Андрей
      <li>403 - нет юзера или сессия не существуют</li>
 </ol>
 </p>Формат ответа при 200 коде:</p>
-<p style="margin-left: 40px;">{"code" : 200, "message": "success"}</p>
+<p style="margin-left: 40px;">{"code" : 200, "message": username}</p>
 <p>Формат ответа при 403 коде:</p>
 <p style="margin-left: 40px;">{"code" : 403, "message": "Access denied"}</p>
 
@@ -78,3 +78,8 @@ KVTeam: Каширин Максим, Виноградов Андрей
 <p style="margin-left: 40px;">{"username" : ..., "email":...}</p>
 <p>Формат ответа при 404 коде:</p>
 <p style="margin-left: 40px;">{"code" : 404, "message":"not found"}</p>
+
+<h4 style="">GET /api/leaders?limit=</h4>
+<p>Получение списка лидеров</p>
+<p>Формат ответа:</p>
+<p style="margin-left: 40px;">{"username" : ..., "rating":..., "level":...}</p>
