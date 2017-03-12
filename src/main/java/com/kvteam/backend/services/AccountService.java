@@ -1,4 +1,4 @@
-package com.kvteam.backend;
+package com.kvteam.backend.services;
 
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.users.UserAccount;

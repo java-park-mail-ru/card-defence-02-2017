@@ -1,5 +1,6 @@
-package com.kvteam.backend;
+package com.kvteam.backend.controllers;
 
+import com.kvteam.backend.services.AccountService;
 import com.kvteam.backend.dataformats.ResponseStatusData;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.dataformats.UserData;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
