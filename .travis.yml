@@ -2,6 +2,7 @@ services:
   - postgresql
 addons:
   postgresql: "9.5"
+sudo: true
 before_script:
   - psql -c "create user last_siege with password 'last_siege';" -U postgres
   - psql -c "alter user last_siege superuser;" -U postgres
