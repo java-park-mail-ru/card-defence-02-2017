@@ -15,12 +15,9 @@ import javax.servlet.http.HttpSession;
 import java.util.List;
 import java.util.UUID;
 
-@CrossOrigin(
-        origins = {"http://localhost:3000"},
-        allowCredentials = "true")
+@CrossOrigin
 @RestController
 public class BackendController {
-
     private AccountService accountService;
 
     public BackendController(AccountService accountService) {
