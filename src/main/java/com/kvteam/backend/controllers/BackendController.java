@@ -35,7 +35,7 @@ public class BackendController {
         final UUID oldSessionID = (UUID)session.getAttribute("sessionID");
         final String oldUsername = (String)session.getAttribute("username");
         if (oldSessionID != null
-                && isStringNullOrEmpty(oldUsername)) {
+                && !isStringNullOrEmpty(oldUsername)) {
             accountService.tryLogout(
                     oldUsername,
                     oldSessionID);

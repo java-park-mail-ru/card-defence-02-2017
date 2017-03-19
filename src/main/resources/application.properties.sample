@@ -1,0 +1,6 @@
+server.port = 8082
+logging.level.root = error
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/last_siege_db
+spring.datasource.username=postgres
+spring.datasource.password=15xkkkwn

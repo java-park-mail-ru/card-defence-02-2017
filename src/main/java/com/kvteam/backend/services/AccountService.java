@@ -1,62 +1,178 @@
 package com.kvteam.backend.services;
 
 import com.kvteam.backend.exceptions.*;
-import com.kvteam.backend.users.UserAccount;
 import com.kvteam.backend.dataformats.UserData;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class AccountService {
-    private Map<String, UserAccount> users = new HashMap<>();
+    private static final String SQL_GET_USER =
+            "select\n" +
+            "  username,\n" +
+            "  email\n" +
+            "from users\n" +
+            "where username = ?;";
+
+    private static final String SQL_INSERT_USER =
+            "insert into users (username, email, password)\n" +
+            "values (?, ?, ?);";
+
+    private static final String SQL_GET_PASSWORD =
+            "select \n" +
+            "  password as password\n" +
+            "from users\n" +
+            "where username = ?;";
+
+    private static final String SQL_INSERT_SESSION =
+            "insert into sessions(username)\n" +
+            "  select\n" +
+            "    u.username\n" +
+            "  from users u\n" +
+            "  where u.username = ?\n" +
+            "on conflict(username) do update\n" +
+            "  set\n" +
+            "    id = uuid_generate_v4(),\n" +
+            "    updated = now()\n" +
+            "returning id;";
+
+    private static final String SQL_CHECK_SESSION =
+            "update\n" +
+            "  sessions\n" +
+            "set \n" +
+            "  updated = now()\n" +
+            "where\n" +
+            "  ID = ?\n" +
+            "  and username = ?";
+
+    private static final String SQL_DELETE_SESSION =
+            "delete from\n" +
+            "  sessions\n" +
+            "where\n" +
+            "  ID = ?\n" +
+            "  and username = ?;";
+
+    private static final String SQL_EDIT_USER =
+            "update \n" +
+            "  users\n" +
+            "set\n" +
+            "  email = case when ? <> '' \n" +
+            "      then ?\n" +
+            "      else email\n" +
+            "  end,\n" +
+            "  password = case when ? <> '' \n" +
+            "      then ?\n" +
+            "      else password\n" +
+            "  end\n" +
+            "where\n" +
+            "  username = ?;";
+
+    private static final String SQL_GET_LEADERS =
+            "select \n" +
+            "  u.username,\n" +
+            "  0 as level,\n" +
+            "  1 as rating\n" +
+            "from users u\n" +
+            "limit ?;";
+
+    private static final String SQL_DELETE_OLD_SESSIONS =
+            "delete from sessions\n" +
+            "where EXTRACT(EPOCH FROM (now() - updated)) > 86400;\n";
+
+    private final JdbcTemplate jdbcTemplate;
+    private final BCryptPasswordEncoder encoder;
+
+
+    public AccountService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.encoder = new BCryptPasswordEncoder();
+    }
+
 
     @Nullable
     public UserData get(@NotNull String username) {
-        if (users.containsKey(username)) {
-            final UserAccount acc = users.get(username);
-            return new UserData(
-                    acc.getUsername(),
-                    null,
-                    acc.getEmail(),
-                    0,
-                    1);
-        }
-        return null;
+        final List<UserData> result = jdbcTemplate.query(
+                SQL_GET_USER,
+                new Object[]{username},
+                (resultSet, i) ->
+                        new UserData(
+                            resultSet.getString("username"),
+                            resultSet.getString("email"),
+                            0,
+                            1
+                        )
+        );
+        return !result.isEmpty() ? result.get(0) : null;
     }
 
     public boolean add(@NotNull UserData account) {
-        if (users.containsKey(account.getUsername())) {
+        if(account.getUsername() == null
+                || account.getPassword() == null
+                || account.getEmail() == null) {
             return false;
         }
-        users.put(account.getUsername(),
-                new UserAccount(
-                        account.getUsername(),
-                        account.getPassword(),
-                        account.getEmail()
-                ));
-        return true;
+
+        boolean result = false;
+        try{
+            jdbcTemplate.update(
+                    SQL_INSERT_USER,
+                    account.getUsername(),
+                    account.getEmail(),
+                    encoder.encode(account.getPassword())
+            );
+            result = true;
+        } catch (DataAccessException ignored) {
+
+        }
+        return result;
     }
 
     @Nullable
     public UUID login(@NotNull String username, @NotNull String password) {
-        UUID sessionID = null;
-        if (users.containsKey(username)) {
-            sessionID = users.get(username).authenticate(password);
+        try {
+            final String userPassword = jdbcTemplate.queryForObject(
+                    SQL_GET_PASSWORD,
+                    String.class,
+                    username
+            );
+            if (encoder.matches(password, userPassword)) {
+                return jdbcTemplate.queryForObject(
+                        SQL_INSERT_SESSION,
+                        UUID.class,
+                        username
+                );
+            }
+        } catch (EmptyResultDataAccessException ignored) {
+
         }
-        return sessionID;
+
+        return null;
     }
 
     public boolean isLoggedIn(@NotNull String username, @Nullable UUID sessionID) {
-        return users.containsKey(username) && users.get(username).checkSession(sessionID);
+        final int rowUpdated = jdbcTemplate.update(
+                SQL_CHECK_SESSION,
+                sessionID,
+                username
+        );
+
+        return rowUpdated != 0;
     }
 
     public void tryLogout(@NotNull String username, @Nullable UUID sessionID) {
-        if (users.containsKey(username)) {
-            users.get(username).endSession(sessionID);
-        }
+        jdbcTemplate.update(
+                SQL_DELETE_SESSION,
+                sessionID,
+                username
+        );
     }
 
     public void editAccount(
@@ -67,12 +183,14 @@ public class AccountService {
             throws AccessDeniedException {
         if (sessionID != null
                 && isLoggedIn(username, sessionID)) {
-            if (newPassword != null) {
-                users.get(username).setPassword(newPassword);
-            }
-            if (newEmail != null) {
-                users.get(username).setEmail(newEmail);
-            }
+            jdbcTemplate.update(
+                    SQL_EDIT_USER,
+                    newEmail != null ? newEmail : "",
+                    newEmail != null ? newEmail : "",
+                    newPassword != null ? encoder.encode(newPassword) : "",
+                    newPassword != null ? encoder.encode(newPassword) : "",
+                    username
+            );
         } else {
             throw new AccessDeniedException();
         }
@@ -80,23 +198,24 @@ public class AccountService {
 
 
     public List<UserData> getLeaders(@Nullable Integer limit){
-        limit = limit == null ? Integer.MAX_VALUE : limit;
+        return jdbcTemplate.query(
+                SQL_GET_LEADERS,
+                new Object[]{limit != null ? limit : Integer.MAX_VALUE},
+                (resultSet, i) ->
+                        new UserData(
+                                resultSet.getString("username"),
+                                resultSet.getInt("rating"),
+                                resultSet.getInt("level")
+                        )
+        );
+    }
 
-        final List<UserData> list = new ArrayList<>();
-        for (UserAccount value : users.values()) {
-            if(list.size() == limit){
-                break;
-            }
-            list.add(
-                    new UserData(value.getUsername(),
-                            null,
-                            null,
-                            0,
-                            1)
-            );
-        }
-
-        return list;
+    /**
+     * Каждые полдня удаление сессий, на которые давно не заходили
+     */
+    @Scheduled(fixedDelay = 1000 * 60 * 60 * 12)
+    private void deleteOldSessions(){
+        jdbcTemplate.update(SQL_DELETE_OLD_SESSIONS);
     }
 
 }

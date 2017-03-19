@@ -1,10 +1,20 @@
 package com.kvteam.backend.services;
 
+import com.kvteam.backend.Application;
 import com.kvteam.backend.dataformats.UserData;
 import com.kvteam.backend.exceptions.AccessDeniedException;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -13,12 +23,21 @@ import static org.junit.Assert.*;
 /**
  * Created by maxim on 12.03.17.
  */
+@RunWith(SpringRunner.class)
+@SpringBootTest
 public class AccountServiceTest {
+    @Autowired
+    private JdbcTemplate template;
+
     private AccountService accountService;
+
+    private static String getUniqueUsername(){
+        return "user-(" + UUID.randomUUID().toString() + ')';
+    }
 
     @Before
     public void setup(){
-        accountService = new AccountService();
+        accountService = new AccountService(template);
     }
 
     private boolean addUser(@NotNull String username){
@@ -26,7 +45,7 @@ public class AccountServiceTest {
                 new UserData(
                         username,
                         "passwd",
-                        "my@email.ru",
+                        username + "@mail.ru",
                         null,
                         null
                 )
@@ -35,24 +54,26 @@ public class AccountServiceTest {
 
     @Test
     public void addCorrectly(){
-        assertTrue(addUser("user1"));
+        assertTrue(addUser(getUniqueUsername()));
     }
 
     @Test
     public void addConflict(){
-        assertTrue(addUser("user2"));
-        assertFalse(addUser("user2"));
+        final String username = getUniqueUsername();
+        assertTrue(addUser(username));
+        assertFalse(addUser(username));
     }
 
     @Test
     public void getCorrectly(){
-        assertTrue(addUser("user3"));
+        final String username = getUniqueUsername();
+        assertTrue(addUser(username));
 
-        final UserData data = accountService.get("user3");
+        final UserData data = accountService.get(username);
         assertNotNull(data);
-        assertEquals("user3", data.getUsername());
+        assertEquals(username, data.getUsername());
         assertNull(data.getPassword());
-        assertEquals("my@email.ru", data.getEmail());
+        assertEquals(username + "@mail.ru", data.getEmail());
     }
 
     @Test
@@ -63,76 +84,82 @@ public class AccountServiceTest {
 
     @Test
     public void loginLogoutCorrectly(){
-        assertTrue(addUser("user4"));
-        final UUID sessionID = accountService.login("user4", "passwd");
+        final String username = getUniqueUsername();
+        assertTrue(addUser(username));
+        final UUID sessionID = accountService.login(username, "passwd");
         assertNotNull(sessionID);
-        assertTrue(accountService.isLoggedIn("user4", sessionID));
-        accountService.tryLogout("user4", sessionID);
-        assertFalse(accountService.isLoggedIn("user4", sessionID));
+        assertTrue(accountService.isLoggedIn(username, sessionID));
+        accountService.tryLogout(username, sessionID);
+        assertFalse(accountService.isLoggedIn(username, sessionID));
     }
 
     @Test
     public void loginAccessDenied(){
-        assertTrue(addUser("user5"));
+        final String username = getUniqueUsername();
+        assertTrue(addUser(username));
         assertNull(accountService.login("IamNotExist", "passwd"));
-        assertNull(accountService.login("user5", "incorrect passwd"));
+        assertNull(accountService.login(username, "incorrect passwd"));
     }
 
     @Test
     public void editEmail(){
-        assertTrue(addUser("user6"));
-        final UUID sessionID = accountService.login("user6", "passwd");
+        final String username = getUniqueUsername();
+        assertTrue(addUser(username));
+        final UUID sessionID = accountService.login(username, "passwd");
         assertNotNull(sessionID);
         try {
             accountService.editAccount(
-                    "user6",
+                    username,
                     sessionID,
-                    "new@mail.ru",
+                    "new" + username + "@mail.ru",
                     null);
         }catch(AccessDeniedException e){
             assertNotNull(e);
         }
-        final UserData data = accountService.get("user6");
+        final UserData data = accountService.get(username);
         assertNotNull(data);
-        assertEquals("user6", data.getUsername());
+        assertEquals(username, data.getUsername());
         assertNull(data.getPassword());
-        assertEquals("new@mail.ru", data.getEmail());
+        assertEquals("new" + username + "@mail.ru", data.getEmail());
     }
 
 
     @Test
     public void editPassword(){
-        assertTrue(addUser("user7"));
-        final UUID sessionID = accountService.login("user7", "passwd");
+        final String username = getUniqueUsername();
+        assertTrue(addUser(username));
+        final UUID sessionID = accountService.login(username, "passwd");
         assertNotNull(sessionID);
         try {
             accountService.editAccount(
-                    "user7",
+                    username,
                     sessionID,
                     null,
                     "newpasswd");
         }catch(AccessDeniedException e){
             assertNotNull(e);
         }
-        accountService.tryLogout("user7", sessionID);
-        final UUID sessionID2 = accountService.login("user7", "passwd");
+        accountService.tryLogout(username, sessionID);
+        final UUID sessionID2 = accountService.login(username, "passwd");
         assertNull(sessionID2);
-        final UUID sessionID3 = accountService.login("user7", "random");
+        final UUID sessionID3 = accountService.login(username, "random");
         assertNull(sessionID3);
-        final UUID sessionID4 = accountService.login("user7", "newpasswd");
+        final UUID sessionID4 = accountService.login(username, "newpasswd");
         assertNotNull(sessionID4);
     }
 
     @Test
     public void editAccessDenied(){
-        assertTrue(addUser("user8"));
-        assertTrue(addUser("user9"));
-        final UUID sessionID = accountService.login("user9", "passwd");
+        final String username = getUniqueUsername();
+        final String username2 = getUniqueUsername();
+        assertTrue(addUser(username));
+        assertTrue(addUser(username2));
+        final UUID sessionID = accountService.login(username2, "passwd");
         assertNotNull(sessionID);
         boolean raised = false;
         try {
             accountService.editAccount(
-                    "user8",
+                    username,
                     sessionID,
                     null,
                     "newpasswd");

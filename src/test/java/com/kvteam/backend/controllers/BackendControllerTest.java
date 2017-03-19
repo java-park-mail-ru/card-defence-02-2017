@@ -16,6 +16,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -32,13 +33,17 @@ public class BackendControllerTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    private static String getUniqueUsername(){
+        return "user-(" + UUID.randomUUID().toString() + ')';
+    }
+
     private ResponseEntity<ResponseStatusData> register(String username, String passwd, HttpStatus expectedStatus){
         final ResponseEntity<ResponseStatusData> answer = restTemplate.postForEntity(
                 "/api/account",
                 new UserData(
                         username,
                         passwd,
-                        "old@mail.ru",
+                        username + "@mail.ru",
                         0,
                         1
                 ),
@@ -64,10 +69,9 @@ public class BackendControllerTest {
                     (user.getBody()).get("email"));
             return new UserData(
                     (user.getBody()).get("username").toString(),
-                    null,
                     (user.getBody()).get("email").toString(),
-                    null,
-                    null);
+                    0,
+                    1);
         }
         return null;
     }
@@ -136,21 +140,26 @@ public class BackendControllerTest {
 
     @Test
     public void registerCorrect() {
-        final ResponseEntity<ResponseStatusData> answer = register("user1", "123", HttpStatus.OK);
-        assertEquals("user1", answer.getBody().getMessage());
+        final String username = getUniqueUsername();
+        final ResponseEntity<ResponseStatusData> answer = register(username, "123", HttpStatus.OK);
+        assertEquals(username, answer.getBody().getMessage());
+        logout(cookieFromEntity(answer));
     }
 
     @Test
     public void registerConflict() {
-        final ResponseEntity<ResponseStatusData> answer1 = register("user2","123", HttpStatus.OK);
-        assertEquals("user2", answer1.getBody().getMessage());
+        final String username = getUniqueUsername();
+        final ResponseEntity<ResponseStatusData> answer1 = register(username,"123", HttpStatus.OK);
+        assertEquals(username, answer1.getBody().getMessage());
 
-        register("user2","312", HttpStatus.CONFLICT);
+        register(username,"312", HttpStatus.CONFLICT);
+
+        logout(cookieFromEntity(answer1));
     }
 
     @Test
     public void registerEmptyPassword() {
-        register("user1","", HttpStatus.BAD_REQUEST);
+        register(getUniqueUsername(),"", HttpStatus.BAD_REQUEST);
     }
 
     @Test
@@ -160,41 +169,46 @@ public class BackendControllerTest {
 
     @Test
     public void getNotFound() {
-        get("not_exists", HttpStatus.NOT_FOUND, null);
+        get(getUniqueUsername(), HttpStatus.NOT_FOUND, null);
     }
 
     @Test
     public void getCorrect() {
-        register("user3", "passwd", HttpStatus.OK);
-        get("user3", HttpStatus.OK, "old@mail.ru");
+        final String username = getUniqueUsername();
+        logout(cookieFromEntity(register(username, "passwd", HttpStatus.OK)));
+        get(username, HttpStatus.OK, username + "@mail.ru");
     }
 
 
     @Test
     public void loginCorrect(){
-        final ResponseEntity<ResponseStatusData> answer = register("user4", "123", HttpStatus.OK);
+        final String username = getUniqueUsername();
+        final ResponseEntity<ResponseStatusData> answer = register(username, "123", HttpStatus.OK);
         logout(cookieFromEntity(answer));
-        login("user4", "123", HttpStatus.OK);
+        final ResponseEntity<ResponseStatusData> answer2 = login(username, "123", HttpStatus.OK);
+        logout(cookieFromEntity(answer2));
     }
 
 
     @Test
     public void loginAccesDenied(){
+        final String username = getUniqueUsername();
         login("user_not_exists", "321", HttpStatus.FORBIDDEN);
-        final ResponseEntity<ResponseStatusData> answer = register("user5", "123", HttpStatus.OK);
+        final ResponseEntity<ResponseStatusData> answer = register(username, "123", HttpStatus.OK);
         logout(cookieFromEntity(answer));
-        login("user5", "321", HttpStatus.FORBIDDEN);
+        login(username, "321", HttpStatus.FORBIDDEN);
     }
 
 
     @Test
     public void isLoggedIn() {
+        final String username = getUniqueUsername();
         assertFalse(isLoggedIn(new ArrayList<>()));
-        final ResponseEntity answer = register("user6", "password", HttpStatus.OK);
+        final ResponseEntity answer = register(username, "password", HttpStatus.OK);
         assertTrue(isLoggedIn(cookieFromEntity(answer)));
         logout(cookieFromEntity(answer));
         assertFalse(isLoggedIn(cookieFromEntity(answer)));
-        final ResponseEntity answer2 = login("user6", "password", HttpStatus.OK);
+        final ResponseEntity answer2 = login(username, "password", HttpStatus.OK);
         assertTrue(isLoggedIn(cookieFromEntity(answer2)));
         logout(cookieFromEntity(answer2));
         assertFalse(isLoggedIn(new ArrayList<>()));
@@ -202,19 +216,22 @@ public class BackendControllerTest {
 
     @Test
     public void editCorrect(){
-        final ResponseEntity<ResponseStatusData> answer = register("user7", "passwd", HttpStatus.OK);
-        get("user7", HttpStatus.OK, "old@mail.ru");
-        edit(cookieFromEntity(answer), "new@mail.ru", "newpasswd", HttpStatus.OK);
-        get("user7", HttpStatus.OK, "new@mail.ru");
+        final String username = getUniqueUsername();
+        final ResponseEntity<ResponseStatusData> answer = register(username, "passwd", HttpStatus.OK);
+        get(username, HttpStatus.OK, username + "@mail.ru");
+        edit(cookieFromEntity(answer), "new" + username + "@mail.ru", "newpasswd", HttpStatus.OK);
+        get(username, HttpStatus.OK, "new" + username + "@mail.ru");
         logout(cookieFromEntity(answer));
         assertFalse(isLoggedIn(cookieFromEntity(answer)));
-        final ResponseEntity answer2 = login("user7", "newpasswd", HttpStatus.OK);
+        final ResponseEntity answer2 = login(username, "newpasswd", HttpStatus.OK);
         assertTrue(isLoggedIn(cookieFromEntity(answer2)));
+        logout(cookieFromEntity(answer2));
     }
 
     @Test
     public void editAccessDenied(){
-        final ResponseEntity<ResponseStatusData> answer = register("user8", "passwd", HttpStatus.OK);
+        final String username = getUniqueUsername();
+        final ResponseEntity<ResponseStatusData> answer = register(username, "passwd", HttpStatus.OK);
         logout(cookieFromEntity(answer));
         edit(cookieFromEntity(answer), "new@mail.ru", "newpasswd", HttpStatus.FORBIDDEN);
     }
