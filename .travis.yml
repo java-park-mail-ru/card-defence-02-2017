@@ -2,7 +2,7 @@ services:
   - postgresql
 before_script:
   - psql -c "create user last_siege with password 'last_siege';" -U postgres
-  - psql -c "alter user last_siege createdb;" -U postgres
+  - psql -c "alter user last_siege superuser;" -U postgres
   - psql -c "create database last_siege_db;" -U postgres
   - psql -c "grant all on database last_siege_db to last_siege;" -U postgres
 language: java
