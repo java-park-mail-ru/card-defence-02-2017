@@ -1,0 +1,7 @@
+services:
+  - postgresql
+before_script:
+  - psql -c "create database last_siege_db;" -U postgres
+language: java
+jdk:
+  - oraclejdk8
