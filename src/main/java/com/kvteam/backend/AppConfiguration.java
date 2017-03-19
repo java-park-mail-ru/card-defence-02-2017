@@ -2,13 +2,18 @@ package com.kvteam.backend;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+
+import javax.sql.DataSource;
 
 /**
  * Created by maxim on 19.03.17.
@@ -16,6 +21,7 @@ import org.springframework.web.filter.CorsFilter;
 @ComponentScan
 @Configuration
 @EnableAutoConfiguration
+@ComponentScan
 public class AppConfiguration {
     @Value("${origin}")
     private String origin;
@@ -33,4 +39,13 @@ public class AppConfiguration {
         bean.setOrder(0);
         return bean;
     }
+
+
+    @Bean
+    @Primary
+    @ConfigurationProperties(prefix = "spring.datasource")
+    public DataSource dataSource() {
+        return DataSourceBuilder.create().build();
+    }
+
 }
