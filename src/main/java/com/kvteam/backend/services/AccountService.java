@@ -15,24 +15,24 @@ import java.util.*;
 
 @Service
 public class AccountService {
-    private static final String SQL_GET_USER =
+    static final String SQL_GET_USER =
             "select\n" +
             "  username,\n" +
             "  email\n" +
             "from users\n" +
             "where username = ?;";
 
-    private static final String SQL_INSERT_USER =
+    static final String SQL_INSERT_USER =
             "insert into users (username, email, password)\n" +
             "values (?, ?, ?);";
 
-    private static final String SQL_GET_PASSWORD =
+    static final String SQL_GET_PASSWORD =
             "select \n" +
             "  password as password\n" +
             "from users\n" +
             "where username = ?;";
 
-    private static final String SQL_INSERT_SESSION =
+    static final String SQL_INSERT_SESSION =
             "insert into sessions(username)\n" +
             "  select\n" +
             "    u.username\n" +
@@ -44,7 +44,7 @@ public class AccountService {
             "    updated = now()\n" +
             "returning id;";
 
-    private static final String SQL_CHECK_SESSION =
+    static final String SQL_CHECK_SESSION =
             "update\n" +
             "  sessions\n" +
             "set \n" +
@@ -53,14 +53,14 @@ public class AccountService {
             "  ID = ?\n" +
             "  and username = ?";
 
-    private static final String SQL_DELETE_SESSION =
+    static final String SQL_DELETE_SESSION =
             "delete from\n" +
             "  sessions\n" +
             "where\n" +
             "  ID = ?\n" +
             "  and username = ?;";
 
-    private static final String SQL_EDIT_USER =
+    static final String SQL_EDIT_USER =
             "update \n" +
             "  users\n" +
             "set\n" +
@@ -75,7 +75,7 @@ public class AccountService {
             "where\n" +
             "  username = ?;";
 
-    private static final String SQL_GET_LEADERS =
+    static final String SQL_GET_LEADERS =
             "select \n" +
             "  u.username,\n" +
             "  0 as level,\n" +
@@ -83,7 +83,7 @@ public class AccountService {
             "from users u\n" +
             "limit ?;";
 
-    private static final String SQL_DELETE_OLD_SESSIONS =
+    static final String SQL_DELETE_OLD_SESSIONS =
             "delete from sessions\n" +
             "where EXTRACT(EPOCH FROM (now() - updated)) > 86400;\n";
 
