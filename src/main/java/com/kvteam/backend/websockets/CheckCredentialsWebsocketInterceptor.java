@@ -1,4 +1,4 @@
-package com.kvteam.backend;
+package com.kvteam.backend.websockets;
 
 import com.kvteam.backend.services.AccountService;
 import org.springframework.http.server.ServerHttpRequest;
@@ -15,15 +15,16 @@ import java.util.stream.Collectors;
  * Created by maxim on 20.03.17.
  */
 public class CheckCredentialsWebsocketInterceptor implements HandshakeInterceptor {
-    private static final List<String> ALLOWED_SIDES
+    static final List<String> ALLOWED_SIDES
             = Arrays.asList("attack", "defence", "all");
 
+    static final String USERNAME_PARAM = "username";
+    static final String TYPE_PARAM = "type";
+    static final String SIDE_PARAM = "side";
+    static final String SINGLEPLAYER = "singleplayer";
+    static final String MULTIPLAYER = "multiplayer";
     private static final String VARIABLE_DELIMITER = "&";
     private static final String KEY_VALUE_DELIMITER = "=";
-    private static final String TYPE_PARAM = "type";
-    private static final String SIDE_PARAM = "side";
-    private static final String SINGLEPLAYER = "singleplayer";
-    private static final String MULTIPLAYER = "multiplayer";
     private static final int MAX_QUERY_LENGTH = 50;
 
 
@@ -70,7 +71,7 @@ public class CheckCredentialsWebsocketInterceptor implements HandshakeIntercepto
                             .split(VARIABLE_DELIMITER))
                             .map(x -> x.split(KEY_VALUE_DELIMITER))
                             .collect(Collectors.toMap(x -> x[0], x -> x[1]));
-                    attributes.put("username", username);
+                    attributes.put(USERNAME_PARAM, username);
                     // В аттрибуты вебсокет сессии добавляем информацию о намерениях
                     // пользователя.
                     // Дальнейшая обработка будет произведена в GameWebSocketHandler

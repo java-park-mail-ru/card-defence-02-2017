@@ -1,7 +1,8 @@
 package com.kvteam.backend;
 
 import com.kvteam.backend.services.AccountService;
-import com.kvteam.backend.services.MatchmakingService;
+import com.kvteam.backend.websockets.CheckCredentialsWebsocketInterceptor;
+import com.kvteam.backend.websockets.GameWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
