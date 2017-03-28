@@ -7,6 +7,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 
 /**
@@ -14,8 +15,10 @@ import java.util.function.BiConsumer;
  */
 public class PlayerConnection
         implements IPlayerConnection{
+    private UUID gameID;
     private String username;
     private WebSocketSession session;
+
 
     private BiConsumer<IPlayerConnection, String> onReceiveEvent;
     private BiConsumer<IPlayerConnection, CloseStatus> onCloseEvent;
@@ -26,6 +29,16 @@ public class PlayerConnection
             ){
         this.username = username;
         this.session = session;
+    }
+
+    @Override
+    @Nullable
+    public UUID getGameID(){
+        return gameID;
+    }
+    @Override
+    public void setGameID(@Nullable UUID gameID){
+        this.gameID = gameID;
     }
 
     @Override
@@ -63,7 +76,9 @@ public class PlayerConnection
     }
 
     @Override
-    public void forceClose() throws IOException{
-        session.close();
+    public void close() throws IOException{
+        if(session.isOpen()) {
+            session.close();
+        }
     }
 }
