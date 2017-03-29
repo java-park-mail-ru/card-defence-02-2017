@@ -30,6 +30,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @RunWith(SpringRunner.class)
 public class BackendControllerTest {
 
+    @SuppressWarnings("SpringJavaAutowiredMembersInspection")
     @Autowired
     private TestRestTemplate restTemplate;
 
@@ -76,6 +77,7 @@ public class BackendControllerTest {
         return null;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void edit(
             List<String> cookie,
             @Nullable String email,

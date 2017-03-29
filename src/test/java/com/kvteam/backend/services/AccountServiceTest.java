@@ -5,31 +5,31 @@ import com.kvteam.backend.exceptions.AccessDeniedException;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.stubbing.OngoingStubbing;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.when;
+import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 /**
  * Created by maxim on 12.03.17.
  */
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+@RunWith(SpringRunner.class)
+@Transactional
 public class AccountServiceTest {
-    @Mock
+    @SuppressWarnings("SpringJavaAutowiredMembersInspection")
+    @Autowired
     private JdbcTemplate template;
 
     private AccountService accountService;
 
-    private BCryptPasswordEncoder encoder;
 
     private static String getUniqueUsername(){
         return "user-(" + UUID.randomUUID().toString() + ')';
@@ -37,26 +37,10 @@ public class AccountServiceTest {
 
     @Before
     public void setup(){
-        MockitoAnnotations.initMocks(this);
-        accountService = new AccountService(template);
-        encoder = new BCryptPasswordEncoder();
+         accountService = new AccountService(template);
     }
 
-    private boolean addUser(@NotNull String username, boolean conflicted){
-        final OngoingStubbing<Integer> s = when(
-                template.update(
-                        eq(AccountService.SQL_INSERT_USER),
-                        eq(username),
-                        eq(username + "@mail.ru"),
-                        anyString()
-                )
-        );
-        if(conflicted){
-            s.thenThrow(new DuplicateKeyException("user already exists"));
-        } else {
-            s.thenReturn(1);
-        }
-
+    private boolean addUser(@NotNull String username){
         return accountService.add(
                 new UserData(
                         username,
@@ -68,100 +52,10 @@ public class AccountServiceTest {
         );
     }
 
-    private void setGetMock(){
-        when(
-                template.query(
-                        eq(AccountService.SQL_GET_USER),
-                        new Object[]{anyString()},
-                        any(RowMapper.class)
-                )
-        ).thenReturn( new ArrayList<>() );
-    }
-
-    private void setGetMock(@NotNull UserData value){
-        when(
-                template.query(
-                        eq(AccountService.SQL_GET_USER),
-                        new Object[]{anyString()},
-                        any(RowMapper.class)
-                )
-        ).thenReturn( Collections.singletonList( value ) );
-
-    }
-
-    private UUID setCorrectLoginMock(
-            @NotNull String username,
-            @NotNull String password){
-        when(
-                template.queryForObject(
-                        eq(AccountService.SQL_GET_PASSWORD),
-                        eq(String.class),
-                        eq(username)
-                )
-        ).thenReturn(encoder.encode(password));
-        final UUID mockSessionID = UUID.randomUUID();
-        when(
-                template.queryForObject(
-                        eq(AccountService.SQL_INSERT_SESSION),
-                        eq(UUID.class),
-                        eq(username)
-                )
-        ).thenReturn(mockSessionID);
-        return mockSessionID;
-    }
-
-    private void setFailedLoginMock(@NotNull String username){
-        when(
-                template.queryForObject(
-                        eq(AccountService.SQL_GET_PASSWORD),
-                        eq(String.class),
-                        eq(username)
-                )
-        ).thenThrow(new EmptyResultDataAccessException(0));
-    }
-
-    private void setIsLoggedInMock(
-            @NotNull UUID mockSessionID,
-            @NotNull String username,
-            @NotNull Integer value){
-        when(
-                template.update(
-                        eq(AccountService.SQL_CHECK_SESSION),
-                        eq(mockSessionID),
-                        eq(username)
-                )
-        ).thenReturn(value);
-    }
-
-    private void setTryLogoutMock(
-            @NotNull UUID mockSessionID,
-            @NotNull String username){
-        when(
-                template.update(
-                        eq(AccountService.SQL_DELETE_SESSION),
-                        eq(mockSessionID),
-                        eq(username)
-                )
-        ).thenReturn(1);
-    }
-
-    private void setEditMock(@NotNull String username){
-        when(
-                template.update(
-                        eq(AccountService.SQL_EDIT_USER),
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        eq(username)
-                )
-        ).thenReturn(1);
-    }
-
     @Test
     public void addCorrectly(){
         final String username = getUniqueUsername();
-        assertTrue(addUser(username, false));
+        assertTrue(addUser(username));
     }
 
 
@@ -169,16 +63,16 @@ public class AccountServiceTest {
     @Test
     public void addConflict(){
         final String username = getUniqueUsername();
-        assertTrue(addUser(username, false));
-        assertFalse(addUser(username, true));
+        assertTrue(addUser(username));
+        assertFalse(addUser(username));
     }
 
     @Test
     public void getCorrectly(){
         final String username = getUniqueUsername();
-        setGetMock(new UserData (username,username + "@mail.ru", 0, 1 ));
+        // setGetMock(new UserData (username,username + "@mail.ru", 0, 1 ));
 
-        assertTrue(addUser(username, false));
+        assertTrue(addUser(username));
 
         final UserData data = accountService.get(username);
         assertNotNull(data);
@@ -189,7 +83,7 @@ public class AccountServiceTest {
 
     @Test
     public void getNotFound(){
-        setGetMock();
+        // setGetMock();
         final UserData data = accountService.get("not_exist");
         assertNull(data);
     }
@@ -197,19 +91,15 @@ public class AccountServiceTest {
     @Test
     public void loginLogoutCorrectly(){
         final String username = getUniqueUsername();
-        final UUID mockSessionID = setCorrectLoginMock(username, "passwd");
 
-        assertTrue(addUser(username, false));
+        assertTrue(addUser(username));
         final UUID sessionID = accountService.login(username, "passwd");
         assertNotNull(sessionID);
 
-        setIsLoggedInMock(mockSessionID, username, 1);
         assertTrue(accountService.isLoggedIn(username, sessionID));
 
-        setTryLogoutMock(mockSessionID, username);
         accountService.tryLogout(username, sessionID);
 
-        setIsLoggedInMock(mockSessionID, username, 0);
         assertFalse(accountService.isLoggedIn(username, sessionID));
     }
 
@@ -217,23 +107,18 @@ public class AccountServiceTest {
     public void loginAccessDenied(){
         final String username = getUniqueUsername();
 
-        assertTrue(addUser(username, false));
-        setFailedLoginMock("IamNotExist");
+        assertTrue(addUser(username));
         assertNull(accountService.login("IamNotExist", "passwd"));
-        setFailedLoginMock(username);
         assertNull(accountService.login(username, "incorrect passwd"));
     }
 
     @Test
     public void editEmail(){
         final String username = getUniqueUsername();
-        assertTrue(addUser(username, false));
-        final UUID mockSessionID = setCorrectLoginMock(username, "passwd");
+        assertTrue(addUser(username));
         final UUID sessionID = accountService.login(username, "passwd");
         assertNotNull(sessionID);
 
-        setIsLoggedInMock(mockSessionID, username, 1);
-        setEditMock(username);
         try {
             accountService.editAccount(
                     username,
@@ -244,7 +129,6 @@ public class AccountServiceTest {
             assertNotNull(e);
         }
 
-        setGetMock( new UserData(username, "new" + username + "@mail.ru", 0, 1 ));
         final UserData data = accountService.get(username);
         assertNotNull(data);
         assertEquals(username, data.getUsername());
@@ -257,11 +141,9 @@ public class AccountServiceTest {
     public void editPassword(){
         final String username = getUniqueUsername();
 
-        assertTrue(addUser(username, false));
-        final UUID mockSessionID = setCorrectLoginMock(username, "passwd");
+        assertTrue(addUser(username));
         final UUID sessionID = accountService.login(username, "passwd");
         assertNotNull(sessionID);
-        setEditMock(username);
         try {
             accountService.editAccount(
                     username,
@@ -271,18 +153,14 @@ public class AccountServiceTest {
         }catch(AccessDeniedException e){
             assertNotNull(e);
         }
-        setTryLogoutMock(mockSessionID, username);
         accountService.tryLogout(username, sessionID);
 
-        setFailedLoginMock(username);
         final UUID sessionID2 = accountService.login(username, "passwd");
         assertNull(sessionID2);
 
-        setFailedLoginMock(username);
         final UUID sessionID3 = accountService.login(username, "random");
         assertNull(sessionID3);
 
-        setCorrectLoginMock(username, "newpasswd");
         final UUID sessionID4 = accountService.login(username, "newpasswd");
         assertNotNull(sessionID4);
     }
@@ -292,14 +170,11 @@ public class AccountServiceTest {
         final String username = getUniqueUsername();
         final String username2 = getUniqueUsername();
 
-        assertTrue(addUser(username, false));
-        assertTrue(addUser(username2, false));
-        final UUID mockSessionID = setCorrectLoginMock(username2, "passwd");
+        assertTrue(addUser(username));
+        assertTrue(addUser(username2));
         final UUID sessionID = accountService.login(username2, "passwd");
         assertNotNull(sessionID);
 
-        setIsLoggedInMock(mockSessionID, username, 0);
-        setEditMock(username);
         boolean raised = false;
         try {
             accountService.editAccount(
