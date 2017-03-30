@@ -271,7 +271,7 @@ public class BackendControllerMockTest {
 
 
     @Test
-    public void loginAccesDenied() throws Exception{
+    public void loginAccessDenied() throws Exception{
         final String username = getUniqueUsername();
         final MvcResult result1 = register(username, "pwd2", status().isOk(),true,true);
         isLoggedIn((MockHttpSession)result1.getRequest().getSession(), true);

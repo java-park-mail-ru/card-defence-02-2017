@@ -25,7 +25,6 @@ import javax.sql.DataSource;
 /**
  * Created by maxim on 19.03.17.
  */
-@ComponentScan
 @Configuration
 @EnableWebSocket
 @EnableAutoConfiguration

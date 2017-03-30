@@ -4,7 +4,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.web.socket.CloseStatus;
 
-import javax.validation.constraints.Null;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.function.BiConsumer;
