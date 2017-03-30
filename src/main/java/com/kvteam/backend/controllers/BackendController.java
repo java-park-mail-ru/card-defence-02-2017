@@ -1,5 +1,6 @@
-package com.kvteam.backend;
+package com.kvteam.backend.controllers;
 
+import com.kvteam.backend.services.AccountService;
 import com.kvteam.backend.dataformats.ResponseStatusData;
 import com.kvteam.backend.exceptions.*;
 import com.kvteam.backend.dataformats.UserData;
@@ -11,16 +12,12 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-@CrossOrigin(
-        origins = {"http://localhost:3000"},
-        allowCredentials = "true")
+@CrossOrigin
 @RestController
 public class BackendController {
-
     private AccountService accountService;
 
     public BackendController(AccountService accountService) {
@@ -35,7 +32,7 @@ public class BackendController {
         final UUID oldSessionID = (UUID)session.getAttribute("sessionID");
         final String oldUsername = (String)session.getAttribute("username");
         if (oldSessionID != null
-                && isStringNullOrEmpty(oldUsername)) {
+                && !isStringNullOrEmpty(oldUsername)) {
             accountService.tryLogout(
                     oldUsername,
                     oldSessionID);

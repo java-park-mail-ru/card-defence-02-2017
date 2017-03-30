@@ -20,6 +20,38 @@ public class UserData {
     @Nullable
     private Integer level = 1;
 
+    /**
+     * Объект с информацией о достижениях(уровень и рейтинг)
+     */
+    public UserData(
+            @Nullable String username,
+            @Nullable Integer rating,
+            @Nullable Integer level) {
+        this.username = username;
+        this.password = null;
+        this.email = null;
+        this.rating = rating;
+        this.level = level;
+    }
+
+    /**
+     * Объект с общедоступной информацией
+     */
+    public UserData(
+            @Nullable String username,
+            @Nullable String email,
+            @Nullable Integer rating,
+            @Nullable Integer level) {
+        this.username = username;
+        this.password = null;
+        this.email = email;
+        this.rating = rating;
+        this.level = level;
+    }
+
+    /**
+     * Для десериализации
+     */
     @JsonCreator
     public UserData(
             @JsonProperty("username") @Nullable String username,
