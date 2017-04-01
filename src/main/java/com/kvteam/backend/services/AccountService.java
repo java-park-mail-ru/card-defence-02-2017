@@ -91,9 +91,9 @@ public class AccountService {
     private final BCryptPasswordEncoder encoder;
 
 
-    public AccountService(JdbcTemplate jdbcTemplate) {
+    public AccountService(JdbcTemplate jdbcTemplate, BCryptPasswordEncoder encoder) {
         this.jdbcTemplate = jdbcTemplate;
-        this.encoder = new BCryptPasswordEncoder();
+        this.encoder = encoder;
     }
 
 

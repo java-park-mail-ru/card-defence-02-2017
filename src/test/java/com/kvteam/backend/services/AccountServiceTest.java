@@ -9,6 +9,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,9 @@ public class AccountServiceTest {
     @SuppressWarnings("SpringJavaAutowiredMembersInspection")
     @Autowired
     private JdbcTemplate template;
+    @SuppressWarnings("SpringJavaAutowiredMembersInspection")
+    @Autowired
+    private BCryptPasswordEncoder encoder;
 
     private AccountService accountService;
 
@@ -37,7 +41,7 @@ public class AccountServiceTest {
 
     @Before
     public void setup(){
-         accountService = new AccountService(template);
+         accountService = new AccountService(template, encoder);
     }
 
     private boolean addUser(@NotNull String username){

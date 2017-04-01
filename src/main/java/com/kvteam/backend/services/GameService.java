@@ -13,6 +13,11 @@ import java.util.UUID;
  */
 @Service
 public class GameService {
+    private ObjectMapper mapper;
+
+    public GameService(ObjectMapper mapper){
+        this.mapper = mapper;
+    }
 
     private void sendStartData(
             UUID gameID,
@@ -40,13 +45,11 @@ public class GameService {
                 1,
                 2,
                 forDefence);
-        final ObjectMapper mapper = new ObjectMapper();
         attack.send(mapper.writeValueAsString(startDataAttack));
         defence.send(mapper.writeValueAsString(startDataDefence));
     }
 
     private void receive(IPlayerConnection me, IPlayerConnection other, String message){
-        final ObjectMapper mapper = new ObjectMapper();
         if(me.getGameID() == null
                 || me.getUsername() == null ){
             throw new NullPointerException();
@@ -90,10 +93,12 @@ public class GameService {
             defender.onClose((conn, status) -> close(conn, attacker));
 
             final UUID gameID = UUID.randomUUID();
-            attacker.setGameID(gameID);
-            defender.setGameID(gameID);
+            attacker.markAsPlaying(gameID);
+            defender.markAsPlaying(gameID);
             sendStartData(gameID, attacker, defender);
         } catch (IOException e) {
+            attacker.markAsErrorable();
+            defender.markAsErrorable();
             attacker.onReceive(null);
             attacker.onClose(null);
             defender.onReceive(null);

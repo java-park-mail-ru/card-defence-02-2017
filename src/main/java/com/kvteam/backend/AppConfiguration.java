@@ -1,5 +1,6 @@
 package com.kvteam.backend;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kvteam.backend.services.AccountService;
 import com.kvteam.backend.websockets.CheckCredentialsWebsocketInterceptor;
 import com.kvteam.backend.websockets.GameWebSocketHandler;
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -63,6 +65,16 @@ public class AppConfiguration implements WebSocketConfigurer {
     @Bean
     public CheckCredentialsWebsocketInterceptor credentialsWebsocketInterceptor() {
         return new CheckCredentialsWebsocketInterceptor(accountService);
+    }
+
+    @Bean
+    public ObjectMapper objectMapper(){
+        return new ObjectMapper();
+    }
+
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder(){
+        return new BCryptPasswordEncoder();
     }
 
     @Override

@@ -11,10 +11,25 @@ import java.util.function.BiConsumer;
 /**
  * Created by maxim on 26.03.17.
  */
+
 public interface IPlayerConnection {
+    enum ConnectionStatus{
+        ESTABLISHING,
+        MATCHMAKING,
+        PLAYING,
+        COMPLETION,
+        ERRORABLE
+    }
+
+    @NotNull
+    ConnectionStatus getConnectionStatus();
+    void markAsMatchmaking();
+    void markAsPlaying(@Nullable UUID gameID);
+    void markAsCompletion();
+    void markAsErrorable();
+
     @Nullable
     UUID getGameID();
-    void setGameID(@Nullable UUID gameID);
     @Nullable
     String getUsername();
     void send(@NotNull String payload) throws IOException;

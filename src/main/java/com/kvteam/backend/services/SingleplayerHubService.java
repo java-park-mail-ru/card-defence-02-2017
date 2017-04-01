@@ -22,6 +22,7 @@ public class SingleplayerHubService {
 
     public synchronized void addPlayer(
             @NotNull IPlayerConnection playerConnection){
+        playerConnection.markAsMatchmaking();
         final IPlayerConnection connection =
                 firstConnections.remove(playerConnection.getUsername());
         if(connection != null){

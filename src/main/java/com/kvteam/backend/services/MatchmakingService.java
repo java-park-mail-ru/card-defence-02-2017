@@ -58,6 +58,7 @@ public class MatchmakingService {
     public synchronized void addPlayer(
             @NotNull IPlayerConnection connection,
             @NotNull String side){
+        connection.markAsMatchmaking();
         if(side.equals("attack")) {
             final IPlayerConnection player = getDefencePlayer();
             if (player != null) {
@@ -82,6 +83,8 @@ public class MatchmakingService {
                 connection.onClose((playerConnection, status) -> System.out.println("Передумал " + playerConnection.getUsername()) );
                 anyTeamPlayers.add(connection);
             }
+        }else{
+            connection.markAsErrorable();
         }
     }
 
