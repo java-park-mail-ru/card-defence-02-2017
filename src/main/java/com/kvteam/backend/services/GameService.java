@@ -47,11 +47,13 @@ public class GameService {
 
     private void receive(IPlayerConnection me, IPlayerConnection other, String message){
         final ObjectMapper mapper = new ObjectMapper();
+        if(me.getGameID() == null
+                || me.getUsername() == null ){
+            throw new NullPointerException();
+        }
         try {
             final GameClientData baseData = mapper.readValue(message, GameClientData.class);
-            if(baseData.getStatus().equals(GameClientData.SEND_CHAT_MESSAGE)
-                    && me.getGameID() != null
-                    && me.getUsername() != null){
+            if(baseData.getStatus().equals(GameClientData.SEND_CHAT_MESSAGE)){
                 final MessageClientData data = mapper.readValue(message, MessageClientData.class);
 
                 final MessageServerData serverData = new MessageServerData(
@@ -60,6 +62,9 @@ public class GameService {
                         data.getMessage()
                 );
                 other.send(mapper.writeValueAsString(serverData));
+            } else if(baseData.getStatus().equals(GameClientData.READY)) {
+                final ReadyClientData data = mapper.readValue(message, ReadyClientData.class);
+                int  a = 5;
             }
 
         } catch (IOException e) {
