@@ -13,6 +13,6 @@ public class RenderCompleteClientData extends GameClientData {
     @JsonCreator
     public RenderCompleteClientData(
             @JsonProperty("gameID") @NotNull UUID gameID) {
-        super(GameClientData.READY, gameID);
+        super(GameClientData.RENDER_COMPLETE, gameID);
     }
 }

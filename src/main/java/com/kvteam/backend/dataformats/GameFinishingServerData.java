@@ -13,25 +13,42 @@ public class GameFinishingServerData extends GameServerData {
     @JsonProperty("currentMove")
     private int currentMove;
     @JsonProperty("castleHP")
-    private int castleHP;
-    @JsonProperty("allowedCards")
-    private List<CardData> allowedCards;
+    private int castleHP; // В начале хода
     @JsonProperty("units")
     private List<UnitData> units;
+    @JsonProperty("actions")
+    private List<ActionData> actions;
 
     public GameFinishingServerData(
             @NotNull UUID gameID,
             int currentMove,
             int castleHP,
-            List<CardData> allowedCards,
-            List<UnitData> units) {
-        super(castleHP <= 0 ?
+            boolean attackerIsWin,
+            List<UnitData> units,
+            List<ActionData> actions) {
+        super(attackerIsWin ?
                 GameServerData.ATTACK_WIN :
                 GameServerData.DEFENCE_WIN,
               gameID);
         this.currentMove = currentMove;
         this.castleHP = castleHP;
-        this.allowedCards = allowedCards;
         this.units = units;
+        this.actions = actions;
+    }
+
+    public int getCurrentMove(){
+        return currentMove;
+    }
+
+    public int getCastleHP(){
+        return castleHP;
+    }
+
+    public List<UnitData> getUnits(){
+        return units;
+    }
+
+    public List<ActionData> getActions(){
+        return actions;
     }
 }

@@ -2,6 +2,8 @@ package com.kvteam.backend.dataformats;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.kvteam.backend.gameplay.Point;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Created by maxim on 28.03.17.
@@ -24,6 +26,11 @@ public class PointData {
         this.yCoord = y;
     }
 
+    public PointData(@NotNull Point point){
+        this.xCoord = point.getX();
+        this.yCoord = point.getY();
+    }
+
     public int getX(){
         return xCoord;
     }
@@ -38,5 +45,9 @@ public class PointData {
 
     public void setY(int y){
         this.yCoord = y;
+    }
+
+    public Point toPoint(){
+        return new Point(xCoord, yCoord);
     }
 }

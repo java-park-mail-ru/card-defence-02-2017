@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -19,7 +20,7 @@ public class ActionData {
     private String actionType;
     @NotNull
     @JsonProperty("actionParameters")
-    private HashMap<String, Object> actionParameters;
+    private Map<String, Object> actionParameters;
     @JsonProperty("timeOffsetBegin")
     private int timeOffsetBegin;
     @JsonProperty("timeOffsetEnd")
@@ -28,7 +29,7 @@ public class ActionData {
 
     public ActionData(@NotNull UUID unitID,
                       @NotNull String actionType,
-                      @NotNull HashMap<String, Object> actionParameters,
+                      @NotNull Map<String, Object> actionParameters,
                       int timeOffsetBegin,
                       int timeOffsetEnd){
         this.unitID = unitID;

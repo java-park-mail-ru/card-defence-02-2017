@@ -3,6 +3,7 @@ package com.kvteam.backend.dataformats;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -17,7 +18,7 @@ public class GameStartData extends GameServerData {
     @JsonProperty("castleMaxHP")
     private int castleMaxHP;
     @JsonProperty("allowedCards")
-    private CardData[] allowedCards;
+    private List<CardData> allowedCards;
 
 
     public GameStartData(
@@ -25,7 +26,7 @@ public class GameStartData extends GameServerData {
             @NotNull String enemyUsername,
             int movesCount,
             int castleMaxHP,
-            CardData[] allowedCards){
+            List<CardData> allowedCards){
         super(GameServerData.START, gameID);
         this.enemyUsername = enemyUsername;
         this.movesCount = movesCount;

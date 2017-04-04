@@ -1,6 +1,8 @@
 package com.kvteam.backend;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kvteam.backend.gameplay.CardManager;
+import com.kvteam.backend.gameplay.GameplaySettings;
 import com.kvteam.backend.services.AccountService;
 import com.kvteam.backend.websockets.CheckCredentialsWebsocketInterceptor;
 import com.kvteam.backend.websockets.GameWebSocketHandler;
@@ -75,6 +77,16 @@ public class AppConfiguration implements WebSocketConfigurer {
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder(){
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public CardManager cardManager(){
+        return new CardManager();
+    }
+
+    @Bean
+    public GameplaySettings gameplaySettings(){
+        return new GameplaySettings(1, 1);
     }
 
     @Override
