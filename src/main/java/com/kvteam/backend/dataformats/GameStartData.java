@@ -29,7 +29,7 @@ public class GameStartData extends CardsForNextMoveGameServerData {
             int movesCount,
             int castleMaxHP,
             List<CardData> allowedCards){
-        super(GameServerData.START, gameID);
+        super(GameServerData.START, gameID, allowedCards);
         this.side = side;
         this.enemyUsername = enemyUsername;
         this.movesCount = movesCount;
