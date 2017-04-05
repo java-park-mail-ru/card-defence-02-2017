@@ -5,14 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kvteam.backend.dataformats.*;
 import com.kvteam.backend.gameplay.*;
 import com.kvteam.backend.websockets.IPlayerConnection;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +47,33 @@ public class GameService {
         return dbService.isBothReady(gameID);
     }
 
+    private String serializeMoveResult(
+            @NotNull UUID gameID,
+            @NotNull Move move,
+            @NotNull List<UnitData> units,
+            @NotNull List<ActionData> actions) throws JsonProcessingException{
+        final MoveResultGameServerData result;
+        if(move.getCurrentCastleHP() <= 0
+                || move.getCurrentMove() >= gameplaySettings.getMaxMovesCount()){
+            result = new GameFinishingServerData(
+                    gameID,
+                    move.getCurrentMove(),
+                    move.getInitialCastleHP(),
+                    move.getCurrentCastleHP() <= 0,
+                    units,
+                    actions
+            );
+        } else {
+            result = new ContinousGameServerData(
+                    gameID,
+                    move.getCurrentMove(),
+                    move.getInitialCastleHP(),
+                    units,
+                    actions
+            );
+        }
+        return mapper.writeValueAsString(result);
+    }
 
     private void startMatch(
             IPlayerConnection attacker,
@@ -124,7 +150,6 @@ public class GameService {
         }
         final UUID gameID = me.getGameID();
         // Тут просто заполняем выбранные карты.
-
         final String serialized = mapper.writeValueAsString(clientData.getCards());
         // Синхронная вставка, узкое место.
         if(!setChosenCards(gameID, side, serialized)){
@@ -142,38 +167,26 @@ public class GameService {
         final Move move = previousMove != null ?
                                 new Move(previousMove) : // Если это не первый ход, за основу предыдущий
                                 new Move(gameplaySettings.getMaxCastleHP()); // Иначе первый инициализируем
+        // Рассчет хода
         MoveProcessor.processMove(cards, move);
 
-        // Посмотреть что в итоге получилось в move: продолжать игру или закончить
-        // Собрать ответ
-        // Записать в базу
-        // Выделить еще карт, если нужно
-        // Отправить ответ
-        final int currentMove = move.getCurrentMove();
-        final GameFinishingServerData data = new GameFinishingServerData(
-                gameID,
-                currentMove,
-                move.getInitialCastleHP(),
-                move.getCurrentCastleHP() <= 0,
-                move.getUnits().stream().map(p ->
-                        new UnitData(
-                                p.getUnitID(),
-                                p.getAssotiatedCardAlias(),
-                                p.getMaxHP(),
-                                p.getCurrentHP(),
-                                new PointData(p.getStartPoint()))).collect(Collectors.toList()),
-                move.getActions().stream().map(p ->
-                        new ActionData(
-                                p.getActor().getUnitID(),
-                                p.getActionType().toString(),
-                                p.getActionParams(),
-                                p.getBeginOffset(),
-                                p.getEndOffset()
-                        )
-                ).collect(Collectors.toList())
-        );
-
-        // Запись в базу информации о ходе(следующему пригодится)
+        // Собираем результаты хода
+        final List<UnitData> units =  move.getUnits().stream().map(p ->
+                new UnitData(
+                        p.getUnitID(),
+                        p.getAssotiatedCardAlias(),
+                        p.getMaxHP(),
+                        p.getCurrentHP(),
+                        new PointData(p.getStartPoint()))).collect(Collectors.toList());
+        final List<ActionData> actions = move.getActions().stream().map(p ->
+                new ActionData(
+                        p.getActor().getUnitID(),
+                        p.getActionType().toString(),
+                        p.getActionParams(),
+                        p.getBeginOffset(),
+                        p.getEndOffset()
+                )
+        ).collect(Collectors.toList());
         final List<UnitData> alive =  move.getAliveUnits().stream().map(p ->
                 new UnitData(
                         p.getUnitID(),
@@ -181,15 +194,17 @@ public class GameService {
                         p.getMaxHP(),
                         p.getCurrentHP(),
                         new PointData(p.getStartPoint()))).collect(Collectors.toList());
+
+        // Запись в базу информации о ходе(следующему пригодится)
         dbService.completeMove(
                 gameID,
-                data.getCurrentMove(),
-                data.getCastleHP(),
-                mapper.writeValueAsString(data.getUnits()),
+                move.getCurrentMove(),
+                move.getInitialCastleHP(),
+                mapper.writeValueAsString(units),
                 mapper.writeValueAsString(alive),
-                mapper.writeValueAsString(data.getActions()));
+                mapper.writeValueAsString(actions));
         // Возвращаем клиенту все что насчитали
-        final String answer = mapper.writeValueAsString(data);
+        final String answer = serializeMoveResult(gameID, move, units, actions);
         me.send(answer);
         other.send(answer);
     }
@@ -218,8 +233,8 @@ public class GameService {
         try{
             me.close();
             other.close();
-        } catch (IOException ignored) {
-
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -248,8 +263,13 @@ public class GameService {
                 processClose(me, other, data);
             }
 
-        } catch (IOException e) {
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") Exception e) {
             e.printStackTrace();
+            try {
+                me.send(mapper.writeValueAsString(new ErrorGameServerData(me.getGameID())));
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException jpe){
+                jpe.printStackTrace();
+            }
         }
     }
 
