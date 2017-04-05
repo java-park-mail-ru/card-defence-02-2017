@@ -11,7 +11,9 @@ import java.util.UUID;
  * Created by maxim on 28.03.17.
  */
 public class GameServerData extends GameStatusData {
+    public static final String ERROR = "ERROR";
     public static final String START = "start";
+    public static final String AVAILABLE_CARDS = "cards";
     public static final String CONTINOUS = "continous";
     public static final String DEFENCE_WIN = "defence_win";
     public static final String ATTACK_WIN = "attack_win";

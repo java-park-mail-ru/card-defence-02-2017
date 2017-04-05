@@ -86,7 +86,7 @@ public class AppConfiguration implements WebSocketConfigurer {
 
     @Bean
     public GameplaySettings gameplaySettings(){
-        return new GameplaySettings(1, 1);
+        return new GameplaySettings(0, 1);
     }
 
     @Override

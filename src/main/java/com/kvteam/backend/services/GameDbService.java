@@ -98,7 +98,50 @@ public class GameDbService {
             "      and defender_chosen_cards is not null as boolean)\n" +
             "from moves\n" +
             "where id = :matchID\n" +
-            "order by move_number\n" +
+            "order by move_number desc\n" +
+            "limit 1;";
+
+    private static final String SQL_SET_ATTACKER_RENDER_COMPLETE =
+            "update\n" +
+            "  moves\n" +
+            "set\n" +
+            "  attacker_render_complete = True\n" +
+            "where\n" +
+            "  rowid = (\n" +
+            "    select \n" +
+            "      rowid \n" +
+            "    from moves \n" +
+            "    where id = :id\n" +
+            "    order by move_number desc\n" +
+            "    limit 1\n" +
+            "  );";
+
+    private static final String SQL_SET_DEFENDER_RENDER_COMPLETE =
+            "update\n" +
+            "  moves\n" +
+            "set\n" +
+            "  defender_render_complete = True\n" +
+            "where\n" +
+            "  rowid = (\n" +
+            "    select \n" +
+            "      rowid \n" +
+            "    from moves \n" +
+            "    where id = :id\n" +
+            "    order by move_number desc\n" +
+            "    limit 1\n" +
+            "  );";
+
+
+    private static final String SQL_IS_BOTH_RENDER_COMPLETE =
+            "select\n" +
+            "  case when attacker_render_complete is True\n" +
+            "              and defender_render_complete is True\n" +
+            "    then 1\n" +
+            "    else 0\n" +
+            "  end\n" +
+            "from moves\n" +
+            "where ID = :matchID\n" +
+            "order by move_number desc\n" +
             "limit 1;";
 
     private static final String SQL_COMPLETE_MOVE =
@@ -144,6 +187,7 @@ public class GameDbService {
             "where ID = :matchID\n" +
             "order by move_number desc\n" +
             "limit 1;";
+
 
     enum WinnerType{
         ATTACKER,
@@ -255,6 +299,36 @@ public class GameDbService {
         );
     }
 
+    public void setDefenderRenderComplete(
+            @NotNull UUID matchID){
+        final Map<String, Object> params = new HashMap<>();
+        params.put("id", matchID);
+        template.update(
+                SQL_SET_DEFENDER_RENDER_COMPLETE,
+                params
+        );
+    }
+
+    public void setAttackerRenderComplete(
+            @NotNull UUID matchID){
+        final Map<String, Object> params = new HashMap<>();
+        params.put("id", matchID);
+        template.update(
+                SQL_SET_ATTACKER_RENDER_COMPLETE,
+                params
+        );
+    }
+
+    public boolean isBothRenderComplete(@NotNull UUID matchID){
+        final Map<String, Object> params = new HashMap<>();
+        params.put("matchID", matchID);
+        return template.queryForObject(
+                SQL_IS_BOTH_RENDER_COMPLETE,
+                params,
+                Boolean.class
+        );
+    }
+
     public void completeMove(
             @NotNull UUID matchID,
             int  moveNumber,
@@ -280,26 +354,33 @@ public class GameDbService {
     public Move getLastMove(@NotNull UUID matchID){
         final Map<String, Object> params = new HashMap<>();
         params.put("matchID", matchID);
-        final Object[] readedValues;
-        try{
-            readedValues = template.queryForObject(
-                    SQL_GET_LAST_MOVE,
-                    params,
-                    Object[].class
-            );
-        } catch (EmptyResultDataAccessException ignored) {
+        final List<Object> readedValues = new ArrayList<>();
+
+        template.query(
+                SQL_GET_LAST_MOVE,
+                params,
+                ((resultSet, i) ->  {
+                    if( i == 0 ){
+                        readedValues.add(resultSet.getInt(1));
+                        readedValues.add(resultSet.getInt(2));
+                        readedValues.add(resultSet.getString(3));
+                    }
+                    return null;
+                })
+        );
+        if(readedValues.isEmpty()){
             return null;
         }
 
 
-        final int currentMove = Integer.parseInt(readedValues[0].toString());
-        final int castleHP = Integer.parseInt(readedValues[1].toString());
+        final int currentMove = Integer.parseInt(readedValues.get(0).toString());
+        final int castleHP = Integer.parseInt(readedValues.get(1).toString());
         final List<Unit> units = new ArrayList<>();
         try {
             final List<UnitData> unitDataList =
                     Arrays.asList(
                             objectMapper.readValue(
-                                    readedValues[2].toString(),
+                                    readedValues.get(2).toString(),
                                     UnitData[].class)
                     );
             for(UnitData unitData : unitDataList){

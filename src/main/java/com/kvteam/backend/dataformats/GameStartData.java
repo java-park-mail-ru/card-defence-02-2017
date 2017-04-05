@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * Created by maxim on 28.03.17.
  */
-public class GameStartData extends GameServerData {
+public class GameStartData extends CardsForNextMoveGameServerData {
     @NotNull
     @JsonProperty("side")
     private String side;
@@ -20,8 +20,6 @@ public class GameStartData extends GameServerData {
     private int movesCount;
     @JsonProperty("castleMaxHP")
     private int castleMaxHP;
-    @JsonProperty("allowedCards")
-    private List<CardData> allowedCards;
 
 
     public GameStartData(
@@ -36,6 +34,5 @@ public class GameStartData extends GameServerData {
         this.enemyUsername = enemyUsername;
         this.movesCount = movesCount;
         this.castleMaxHP = castleMaxHP;
-        this.allowedCards = allowedCards;
     }
 }

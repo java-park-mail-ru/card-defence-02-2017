@@ -37,6 +37,7 @@ public class Move {
         this.initialCastleHP = this.currentCastleHP = prevMove.currentCastleHP;
         this.units = new ArrayList<>(prevMove.aliveUnits);
         this.aliveUnits = new ArrayList<>(prevMove.aliveUnits);
+        this.actions = new ArrayList<>();
     }
 
     // Предыдущий ход, пихать это в processMove не следует
