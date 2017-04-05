@@ -25,11 +25,11 @@ public class UnitData {
     private PointData startPoint;
 
     public UnitData(
-            @NotNull UUID unitID,
-            @NotNull String assotiatedCardAlias,
-            int maxHP,
-            int currentHP,
-            @NotNull PointData startPoint){
+            @JsonProperty("unitID") @NotNull UUID unitID,
+            @JsonProperty("assotiatedCardAlias") @NotNull String assotiatedCardAlias,
+            @JsonProperty("maxHP") int maxHP,
+            @JsonProperty("currentHP")int currentHP,
+            @JsonProperty("startPoint") @NotNull PointData startPoint){
         this.unitID = unitID;
         this.assotiatedCardAlias = assotiatedCardAlias;
         this.maxHP = maxHP;

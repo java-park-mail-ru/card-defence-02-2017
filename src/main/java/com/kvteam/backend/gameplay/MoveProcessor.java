@@ -84,6 +84,7 @@ public final class MoveProcessor {
             attackAction.setBeginOffset(3500);
             attackAction.setEndOffset(3700);
             move.addAction( attackAction );
+            move.decrementCastleHP(1);
         }
     }
 }

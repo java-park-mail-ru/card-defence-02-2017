@@ -47,6 +47,17 @@ public class GameService {
         return dbService.isBothReady(gameID);
     }
 
+    private synchronized boolean setRenderComplete(
+            UUID gameID,
+            Side side){
+        if(side == Side.ATTACKER) {
+            dbService.setDefenderRenderComplete(gameID);
+        } else {
+            dbService.setAttackerRenderComplete(gameID);
+        }
+        return dbService.isBothRenderComplete(gameID);
+    }
+
     private String serializeMoveResult(
             @NotNull UUID gameID,
             @NotNull Move move,
@@ -212,18 +223,72 @@ public class GameService {
     private void processRenderComplete(
             IPlayerConnection me,
             IPlayerConnection other,
-            RenderCompleteClientData data) throws IOException{
-        try {
-            if(me.getGameID() == null){
-                throw new NullPointerException();
-            }
-            dbService.completeMatch(me.getGameID(), GameDbService.WinnerType.ATTACKER);
-        }catch (SQLException | NullPointerException e){
-            e.printStackTrace();
+            Side side,
+            RenderCompleteClientData data) throws IOException, SQLException{
+        if(me.getGameID() == null){
+            throw new NullPointerException();
+        }
+        final UUID gameID = me.getGameID();
+        // Синхронная вставка, узкое место.
+        if(!setRenderComplete(gameID, side)){
+            return;
+        }
+        final Move previousMove = dbService.getLastMove(me.getGameID());
+        if(previousMove == null){
+            throw new NullPointerException();
         }
 
-        me.close();
-        other.close();
+        if(previousMove.getCurrentCastleHP() <= 0){
+            // Разбили замок, завершаем игру с победой атакующего
+            dbService.completeMatch(me.getGameID(), GameDbService.WinnerType.ATTACKER);
+            me.markAsCompletion();
+            other.markAsCompletion();
+            me.close();
+            other.close();
+        } else if(previousMove.getCurrentMove() >= gameplaySettings.getMaxMovesCount()){
+            // Прошло максимальное количество ходов, завершаем игру с победой защиты
+            dbService.completeMatch(me.getGameID(), GameDbService.WinnerType.DEFENDER);
+            me.markAsCompletion();
+            other.markAsCompletion();
+            me.close();
+            other.close();
+        } else {
+            // Продолжаем игру, выделяем карточки для следующего хода
+            final List<CardData> forAttack = cardManager
+                    .getCardsForMove(Side.ATTACKER, previousMove.getCurrentMove() + 1)
+                    .stream()
+                    .map(p -> new CardData(p.getAlias()))
+                    .collect(Collectors.toList());
+            final List<CardData> forDefence = cardManager
+                    .getCardsForMove(Side.DEFENDER, previousMove.getCurrentMove() + 1)
+                    .stream()
+                    .map(p -> new CardData(p.getAlias()))
+                    .collect(Collectors.toList());
+            dbService.insertMove(
+                    me.getGameID(),
+                    previousMove.getCurrentCastleHP(),
+                    mapper.writeValueAsString(forAttack),
+                    mapper.writeValueAsString(forDefence)
+            );
+
+            final CardsForNextMoveGameServerData cardAttackData
+                    = new CardsForNextMoveGameServerData(
+                        me.getGameID(),
+                        forAttack);
+
+            final CardsForNextMoveGameServerData cardDefenceData
+                    = new CardsForNextMoveGameServerData(
+                        me.getGameID(),
+                        forDefence);
+
+            if(side == Side.ATTACKER){
+                me.send(mapper.writeValueAsString(cardAttackData));
+                other.send(mapper.writeValueAsString(cardDefenceData));
+            } else {
+                other.send(mapper.writeValueAsString(cardAttackData));
+                me.send(mapper.writeValueAsString(cardDefenceData));
+            }
+        }
     }
 
     private void processClose(
@@ -257,7 +322,7 @@ public class GameService {
                 processReady(me, other, side, data);
             } else if(baseData.getStatus().equals(GameClientData.RENDER_COMPLETE)) {
                 final RenderCompleteClientData data = mapper.readValue(message, RenderCompleteClientData.class);
-                processRenderComplete(me, other, data);
+                processRenderComplete(me, other, side, data);
             } else if(baseData.getStatus().equals(GameClientData.CLOSE)) {
                 final CloseClientData data = mapper.readValue(message, CloseClientData.class);
                 processClose(me, other, data);
