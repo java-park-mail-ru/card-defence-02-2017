@@ -11,6 +11,9 @@ import java.util.UUID;
  */
 public class GameStartData extends GameServerData {
     @NotNull
+    @JsonProperty("side")
+    private String side;
+    @NotNull
     @JsonProperty("enemyUsername")
     private String enemyUsername;
     @JsonProperty("movesCount")
@@ -24,10 +27,12 @@ public class GameStartData extends GameServerData {
     public GameStartData(
             @NotNull UUID gameID,
             @NotNull String enemyUsername,
+            @NotNull String side,
             int movesCount,
             int castleMaxHP,
             List<CardData> allowedCards){
         super(GameServerData.START, gameID);
+        this.side = side;
         this.enemyUsername = enemyUsername;
         this.movesCount = movesCount;
         this.castleMaxHP = castleMaxHP;

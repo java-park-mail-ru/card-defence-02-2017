@@ -86,6 +86,7 @@ public class GameService {
         final GameStartData startDataAttack = new GameStartData(
                 gameID,
                 defender.getUsername(),
+                "attack",
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP(),
                 forAttack);
@@ -93,6 +94,7 @@ public class GameService {
         final GameStartData startDataDefence = new GameStartData(
                 gameID,
                 attacker.getUsername(),
+                "defence",
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP(),
                 forDefence);
