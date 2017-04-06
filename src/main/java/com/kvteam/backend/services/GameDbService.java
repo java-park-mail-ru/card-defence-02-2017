@@ -55,7 +55,7 @@ public class GameDbService {
             "        order by move_number desc\n" +
             "        limit 1 \n" +
             "      ), \n" +
-            "      0\n" +
+            "      1\n" +
             "  ),\n" +
             "  :initialCastleHP,\n" +
             "  :attackerCards,\n" +

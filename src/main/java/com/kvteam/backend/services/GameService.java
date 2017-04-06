@@ -104,12 +104,12 @@ public class GameService {
         defender.markAsPlaying(gameID);
 
         final List<CardData> forAttack = cardManager
-                .getCardsForMove(Side.ATTACKER, 0)
+                .getCardsForMove(Side.ATTACKER, 1)
                 .stream()
                 .map(p -> new CardData(p.getAlias()))
                 .collect(Collectors.toList());
         final List<CardData> forDefence = cardManager
-                .getCardsForMove(Side.DEFENDER, 0)
+                .getCardsForMove(Side.DEFENDER, 1)
                 .stream()
                 .map(p -> new CardData(p.getAlias()))
                 .collect(Collectors.toList());

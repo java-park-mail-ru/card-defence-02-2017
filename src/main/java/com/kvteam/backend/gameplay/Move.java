@@ -24,7 +24,7 @@ public class Move {
 
     // Первый ход
     public Move(int maxCastleHP){
-        currentMove = 0;
+        currentMove = 1;
         initialCastleHP = currentCastleHP = maxCastleHP;
         units = new ArrayList<>();
         aliveUnits = new ArrayList<>();
