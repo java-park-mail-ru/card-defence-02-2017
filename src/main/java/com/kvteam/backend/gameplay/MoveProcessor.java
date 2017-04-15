@@ -1,5 +1,6 @@
 package com.kvteam.backend.gameplay;
 
+import com.kvteam.backend.exceptions.MoveProcessorException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -13,7 +14,7 @@ public final class MoveProcessor {
 
     public static void processMove(
             @NotNull List<Card> chosenCards,
-            @NotNull Move move){
+            @NotNull Move move) throws MoveProcessorException{
         for(Card card: chosenCards){
             final Point pos = card.getStartPosition();
             if( pos != null
@@ -33,7 +34,7 @@ public final class MoveProcessor {
 
         if(attackUnits.isEmpty()
                 || defenceUnits.isEmpty()){
-            throw new RuntimeException("Я не придумал еще что тут сделать");
+            throw new MoveProcessorException("Я не придумал еще что тут сделать");
         }
 
         // Здесь сейчас будет самая базовая логика:

@@ -1,5 +1,8 @@
 package com.kvteam.backend.gameplay;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * Created by maxim on 04.04.17.
  */
@@ -7,7 +10,10 @@ public class GameplaySettings {
     private int maxMovesCount;
     private int maxCastleHP;
 
-    public GameplaySettings(int maxMovesCount, int maxCastleHP){
+    @JsonCreator
+    public GameplaySettings(
+            @JsonProperty("maxMovesCount") int maxMovesCount,
+            @JsonProperty("maxCastleHP") int maxCastleHP){
         this.maxMovesCount = maxMovesCount;
         this.maxCastleHP = maxCastleHP;
     }

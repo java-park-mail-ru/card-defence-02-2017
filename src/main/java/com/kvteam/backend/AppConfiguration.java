@@ -1,6 +1,7 @@
 package com.kvteam.backend;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kvteam.backend.gameplay.Card;
 import com.kvteam.backend.gameplay.CardManager;
 import com.kvteam.backend.gameplay.GameplaySettings;
 import com.kvteam.backend.services.AccountService;
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -25,10 +27,12 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 
 /**
  * Created by maxim on 19.03.17.
  */
+@SuppressWarnings({"SpringAutowiredFieldsWarningInspection", "SpringFacetCodeInspection"})
 @Configuration
 @EnableWebSocket
 @EnableAutoConfiguration
@@ -40,7 +44,6 @@ public class AppConfiguration implements WebSocketConfigurer {
     private GameWebSocketHandler webSocketHandler;
     @Autowired
     private AccountService accountService;
-
 
     @Bean
     public FilterRegistrationBean corsFilter() {
@@ -81,12 +84,33 @@ public class AppConfiguration implements WebSocketConfigurer {
 
     @Bean
     public CardManager cardManager(){
-        return new CardManager();
+        final CardManager manager;
+        try {
+            final ClassPathResource resource
+                    = new ClassPathResource("cards.json");
+            final Card[] cards = objectMapper()
+                    .readValue(resource.getInputStream(), Card[].class);
+            manager = new CardManager(cards);
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException e) {
+            e.printStackTrace();
+            return new CardManager(null);
+        }
+        return manager;
     }
 
     @Bean
     public GameplaySettings gameplaySettings(){
-        return new GameplaySettings(1, 1);
+        final GameplaySettings settings;
+        try {
+            final ClassPathResource resource
+                    = new ClassPathResource("game_settings.json");
+            settings = objectMapper()
+                    .readValue(resource.getInputStream(), GameplaySettings.class);
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException e) {
+            e.printStackTrace();
+            return new GameplaySettings(1, 1);
+        }
+        return settings;
     }
 
     @Override

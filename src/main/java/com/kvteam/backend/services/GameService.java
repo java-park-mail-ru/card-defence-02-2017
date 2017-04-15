@@ -3,6 +3,7 @@ package com.kvteam.backend.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kvteam.backend.dataformats.*;
+import com.kvteam.backend.exceptions.MoveProcessorException;
 import com.kvteam.backend.gameplay.*;
 import com.kvteam.backend.websockets.IPlayerConnection;
 import org.jetbrains.annotations.NotNull;
@@ -157,7 +158,7 @@ public class GameService {
             IPlayerConnection me,
             IPlayerConnection other,
             Side side,
-            ReadyClientData clientData) throws IOException{
+            ReadyClientData clientData) throws IOException, MoveProcessorException{
         if(me.getGameID() == null){
             throw new NullPointerException();
         }
@@ -331,12 +332,7 @@ public class GameService {
             }
 
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") Exception e) {
-            e.printStackTrace();
-            try {
-                me.send(mapper.writeValueAsString(new ErrorGameServerData(me.getGameID())));
-            } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException jpe){
-                jpe.printStackTrace();
-            }
+            criticalExceptionRaised(e, me, other);
         }
     }
 
@@ -358,19 +354,34 @@ public class GameService {
             defender.onClose((conn, status) -> close(conn, attacker));
 
             startMatch(attacker, defender);
-        } catch (IOException | NullPointerException | SQLException e) {
-            attacker.markAsErrorable();
-            defender.markAsErrorable();
-            attacker.onReceive(null);
-            attacker.onClose(null);
-            defender.onReceive(null);
-            defender.onReceive(null);
-            try {
-                attacker.close();
-                defender.close();
-            } catch (IOException ignored) {
+        } catch (IOException
+                | NullPointerException
+                | SQLException e) {
+            criticalExceptionRaised(e, attacker, defender);
+        }
+    }
 
-            }
+    private void criticalExceptionRaised(
+            Exception e,
+            IPlayerConnection me,
+            IPlayerConnection other){
+        e.printStackTrace();
+        try {
+            me.send(mapper.writeValueAsString(new ErrorGameServerData(me.getGameID())));
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException jpe){
+            jpe.printStackTrace();
+        }
+        me.markAsErrorable();
+        other.markAsErrorable();
+        me.onReceive(null);
+        other.onClose(null);
+        me.onReceive(null);
+        other.onReceive(null);
+        try {
+            me.close();
+            other.close();
+        } catch (IOException ignored) {
+
         }
     }
 

@@ -14,13 +14,14 @@ public class CardManager {
     // Потом должно заполняться из файла
     private Map<String, Card> cards;
 
-    public CardManager(){
-        rand = new Random();
-        cards = new HashMap<>();
-        cards.put("a", new Card("a", Side.ATTACKER, 1, 0.5, 0.5));
-        //cards.put("b", new Card("b", Side.ATTACKER, 2, 0.5, 0.5));
-        cards.put("c", new Card("c", Side.DEFENDER, 3, 0.5, 0.5));
-        //cards.put("d", new Card("d", Side.DEFENDER, 4, 0.5, 0.5));
+    public CardManager(@Nullable Card[] cards){
+        this.rand = new Random();
+        this.cards = new HashMap<>();
+        if(cards != null) {
+            for (Card card : cards) {
+                this.cards.put(card.getAlias(), card);
+            }
+        }
     }
 
     public List<Card> getCardsForMove(
