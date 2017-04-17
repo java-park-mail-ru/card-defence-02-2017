@@ -2,6 +2,7 @@ package com.kvteam.backend.services;
 
 import com.kvteam.backend.websockets.IPlayerConnection;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -25,7 +26,10 @@ public class SingleplayerHubService {
         playerConnection.markAsMatchmaking();
         final IPlayerConnection connection =
                 firstConnections.remove(playerConnection.getUsername());
-        if(connection != null){
+        // Если в очереди уже есть такое соединение и оно
+        // по каким либо причинам не было закрыто, то начинаем игру
+        // Иначе добавляем текущее соединение в ожидание второго.
+        if(connection != null && !connection.isClosed()){
             gameService.startGame(connection, playerConnection);
         } else {
             firstConnections.put(
@@ -33,6 +37,10 @@ public class SingleplayerHubService {
                     playerConnection
             );
         }
+    }
 
+    @Scheduled(fixedDelay = 1000)
+    void deleteLostConnections(){
+        firstConnections.entrySet().removeIf(p -> p.getValue().isClosed());
     }
 }

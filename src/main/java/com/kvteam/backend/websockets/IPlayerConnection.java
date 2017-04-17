@@ -38,4 +38,5 @@ public interface IPlayerConnection {
     void notifyOnReceive(@NotNull String payload);
     void notifyOnClose(@NotNull CloseStatus status);
     void close() throws IOException;
+    boolean isClosed();
 }

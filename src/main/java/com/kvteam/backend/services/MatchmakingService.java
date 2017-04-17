@@ -3,10 +3,15 @@ package com.kvteam.backend.services;
 import com.kvteam.backend.websockets.IPlayerConnection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import javax.validation.constraints.Null;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by maxim on 15.03.17.
@@ -19,14 +24,14 @@ public class MatchmakingService {
         ALL
     };
 
-    private List<IPlayerConnection> defencePlayers =
-            new LinkedList<>();
+    private Queue<IPlayerConnection> defencePlayers =
+            new ConcurrentLinkedQueue<>();
 
-    private List<IPlayerConnection> attackPlayers =
-            new LinkedList<>();
+    private Queue<IPlayerConnection> attackPlayers =
+            new ConcurrentLinkedQueue<>();
 
-    private List<IPlayerConnection> anyTeamPlayers =
-            new LinkedList<>();
+    private Queue<IPlayerConnection> anyTeamPlayers =
+            new ConcurrentLinkedQueue<>();
 
     private GameService gameService;
 
@@ -35,24 +40,12 @@ public class MatchmakingService {
     }
 
     @Nullable
-    private IPlayerConnection getDefencePlayer(){
-        return !defencePlayers.isEmpty() ?
-                defencePlayers.remove(0) :
-                null;
-    }
-
-    @Nullable
-    private IPlayerConnection getAttackPlayer(){
-        return !attackPlayers.isEmpty() ?
-                attackPlayers.remove(0) :
-                null;
-    }
-
-    @Nullable
-    private IPlayerConnection getAnyPlayer(){
-        return !anyTeamPlayers.isEmpty() ?
-                anyTeamPlayers.remove(0) :
-                null;
+    private IPlayerConnection getFirstOpenPlayer(Queue<IPlayerConnection> players){
+        IPlayerConnection conn;
+        do{
+            conn = players.poll();
+        }while(conn != null && conn.isClosed());
+        return conn;
     }
 
     public synchronized void addPlayer(
@@ -60,7 +53,7 @@ public class MatchmakingService {
             @NotNull String side){
         connection.markAsMatchmaking();
         if(side.equals("attack")) {
-            final IPlayerConnection player = getDefencePlayer();
+            final IPlayerConnection player = getFirstOpenPlayer(defencePlayers);
             if (player != null) {
                 gameService.startGame(connection, player);
             } else {
@@ -68,7 +61,7 @@ public class MatchmakingService {
                 attackPlayers.add(connection);
             }
         }else if(side.equals("defence")){
-            final IPlayerConnection player = getAttackPlayer();
+            final IPlayerConnection player = getFirstOpenPlayer(attackPlayers);
             if(player != null){
                 gameService.startGame(player, connection);
             }else{
@@ -76,7 +69,7 @@ public class MatchmakingService {
                 defencePlayers.add(connection);
             }
         }else if(side.equals("all")){
-            final IPlayerConnection player = getAnyPlayer();
+            final IPlayerConnection player = getFirstOpenPlayer(anyTeamPlayers);
             if(player != null){
                 gameService.startGame(player, connection);
             }else{
@@ -88,4 +81,11 @@ public class MatchmakingService {
         }
     }
 
+    // Закрытые сокеты - заблудшие души в матчмейкере
+    @Scheduled(fixedDelay = 1000 * 30)
+    void deleteLostConnections(){
+        attackPlayers.removeIf(IPlayerConnection::isClosed);
+        defencePlayers.removeIf(IPlayerConnection::isClosed);
+        anyTeamPlayers.removeIf(IPlayerConnection::isClosed);
+    }
 }

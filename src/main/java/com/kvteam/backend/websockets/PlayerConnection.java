@@ -126,4 +126,9 @@ public class PlayerConnection
             session.close();
         }
     }
+
+    @Override
+    public boolean isClosed(){
+        return !session.isOpen();
+    }
 }
