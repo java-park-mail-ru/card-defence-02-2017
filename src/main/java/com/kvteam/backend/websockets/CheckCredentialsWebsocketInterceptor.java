@@ -1,13 +1,16 @@
 package com.kvteam.backend.websockets;
 
 import com.kvteam.backend.services.AccountService;
+import org.apache.http.NameValuePair;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import org.apache.http.client.utils.URLEncodedUtils;
 
 import javax.servlet.http.HttpSession;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -65,12 +68,12 @@ public class CheckCredentialsWebsocketInterceptor implements HandshakeIntercepto
                     && request.getURI().getQuery().length() < MAX_QUERY_LENGTH) {
                 try {
                     // Парсинг гет параметров
-                    final Map<String, String> queryParams = Arrays.stream(request
-                            .getURI()
-                            .getQuery()
-                            .split(VARIABLE_DELIMITER))
-                            .map(x -> x.split(KEY_VALUE_DELIMITER))
-                            .collect(Collectors.toMap(x -> x[0], x -> x[1]));
+                    final List<NameValuePair> params
+                            = URLEncodedUtils.parse(request.getURI(), "UTF-8");
+                    final Map<String, String> queryParams =
+                            params
+                            .stream()
+                            .collect(Collectors.toMap(NameValuePair::getName, NameValuePair::getValue));
                     attributes.put(USERNAME_PARAM, username);
                     // В аттрибуты вебсокет сессии добавляем информацию о намерениях
                     // пользователя.

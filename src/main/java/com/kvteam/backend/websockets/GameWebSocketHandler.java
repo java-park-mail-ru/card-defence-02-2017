@@ -9,8 +9,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by maxim on 14.03.17.
@@ -20,7 +20,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private MatchmakingService matchmakingService;
     private SingleplayerHubService singleplayerHubService;
     private Map<String, IPlayerConnection> connections =
-            new HashMap<>();
+            new ConcurrentHashMap<>();
 
     public GameWebSocketHandler(
             MatchmakingService matchmakingService,
