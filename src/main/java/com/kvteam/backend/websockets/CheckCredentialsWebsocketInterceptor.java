@@ -26,9 +26,7 @@ public class CheckCredentialsWebsocketInterceptor implements HandshakeIntercepto
     static final String SIDE_PARAM = "side";
     static final String SINGLEPLAYER = "singleplayer";
     static final String MULTIPLAYER = "multiplayer";
-    private static final String VARIABLE_DELIMITER = "&";
-    private static final String KEY_VALUE_DELIMITER = "=";
-    private static final int MAX_QUERY_LENGTH = 50;
+    private static final int MAX_QUERY_LENGTH = 30;
 
 
     private AccountService accountService;
