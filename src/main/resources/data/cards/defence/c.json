@@ -1,0 +1,8 @@
+{
+    "type": "com.kvteam.backend.gameplay.Card",
+    "alias": "c",
+    "side": "DEFENDER",
+    "maxHP": 1,
+    "attack": 1,
+    "range": 1
+}

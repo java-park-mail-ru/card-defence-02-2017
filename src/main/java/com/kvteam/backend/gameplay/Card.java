@@ -2,13 +2,14 @@ package com.kvteam.backend.gameplay;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.kvteam.backend.resources.Resource;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Created by maxim on 03.04.17.
  */
-public class Card {
+public class Card extends Resource{
     @NotNull
     private String alias;
     @NotNull
@@ -19,14 +20,17 @@ public class Card {
     @Nullable
     private Point startPosition;
 
-    // Таким способом можно создавать только из json-файла.
-    // Для Jackson доступно будет через рефлексию
+
+    @SuppressWarnings("unused")
     @JsonCreator
-    private Card(@JsonProperty("alias") @NotNull String alias,
+    private Card(
+         @JsonProperty("type") @NotNull String type,
+         @JsonProperty("alias") @NotNull String alias,
          @JsonProperty("side") @NotNull Side side,
          @JsonProperty("maxHP") int maxHP,
          @JsonProperty("attack") double attack,
          @JsonProperty("range") double range){
+        super(type);
         this.alias = alias;
         this.side = side;
         this.maxHP = maxHP;

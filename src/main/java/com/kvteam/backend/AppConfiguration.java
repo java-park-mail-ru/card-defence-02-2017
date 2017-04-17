@@ -1,7 +1,7 @@
 package com.kvteam.backend;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kvteam.backend.gameplay.Card;
 import com.kvteam.backend.gameplay.CardManager;
 import com.kvteam.backend.gameplay.GameplaySettings;
 import com.kvteam.backend.services.AccountService;
@@ -13,11 +13,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.context.annotation.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,7 +23,6 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 import javax.sql.DataSource;
-import java.io.IOException;
 
 /**
  * Created by maxim on 19.03.17.
@@ -74,7 +69,7 @@ public class AppConfiguration implements WebSocketConfigurer {
 
     @Bean
     public ObjectMapper objectMapper(){
-        return new ObjectMapper();
+        return new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     @Bean
@@ -84,33 +79,12 @@ public class AppConfiguration implements WebSocketConfigurer {
 
     @Bean
     public CardManager cardManager(){
-        final CardManager manager;
-        try {
-            final ClassPathResource resource
-                    = new ClassPathResource("cards.json");
-            final Card[] cards = objectMapper()
-                    .readValue(resource.getInputStream(), Card[].class);
-            manager = new CardManager(cards);
-        } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException e) {
-            e.printStackTrace();
-            return new CardManager(null);
-        }
-        return manager;
+        return new CardManager();
     }
 
     @Bean
     public GameplaySettings gameplaySettings(){
-        final GameplaySettings settings;
-        try {
-            final ClassPathResource resource
-                    = new ClassPathResource("game_settings.json");
-            settings = objectMapper()
-                    .readValue(resource.getInputStream(), GameplaySettings.class);
-        } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException e) {
-            e.printStackTrace();
-            return new GameplaySettings(1, 1);
-        }
-        return settings;
+        return new GameplaySettings();
     }
 
     @Override
