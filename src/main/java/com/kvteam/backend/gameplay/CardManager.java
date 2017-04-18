@@ -31,9 +31,10 @@ public class CardManager {
 
     @PostConstruct
     public void initCards(){
-        final List<Card> readed =
-                    resourceFactory.getFromDir("data/cards/", Card.class);
-        for(Card card: readed){
+        final String[] names = resourceFactory.getJsonStringArray("data/cards/cards.json");
+        for(String name: names){
+            final Card card =
+                    resourceFactory.get("data/cards/" + name, Card.class);
             cards.put(card.getAlias(), card);
         }
     }

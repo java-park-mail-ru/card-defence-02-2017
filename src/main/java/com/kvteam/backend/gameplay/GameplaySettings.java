@@ -1,7 +1,6 @@
 package com.kvteam.backend.gameplay;
 
 import com.kvteam.backend.resources.RawResource;
-import com.kvteam.backend.resources.Resource;
 import com.kvteam.backend.resources.ResourceFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
