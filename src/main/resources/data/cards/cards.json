@@ -1,6 +1,4 @@
 [
   "attack/a.json",
-  "attack/b.json",
-  "defence/c.json",
-  "defence/d.json"
+  "defence/c.json"
 ]

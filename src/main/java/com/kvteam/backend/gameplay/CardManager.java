@@ -48,7 +48,7 @@ public class CardManager {
                                         .filter( p -> p.getSide() == side)
                                         .collect(Collectors.toList());
         Collections.shuffle(onlySelectedSide);
-        final int numberOfCardsForMove = 1;
+        final int numberOfCardsForMove = Math.min(moveCount, 4);
         return onlySelectedSide
                 .stream()
                 .limit(numberOfCardsForMove)

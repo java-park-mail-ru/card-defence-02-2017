@@ -3,27 +3,44 @@ package com.kvteam.backend.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kvteam.backend.dataformats.*;
+import com.kvteam.backend.exceptions.InvalidPlayerConnectionStateException;
 import com.kvteam.backend.exceptions.MoveProcessorException;
 import com.kvteam.backend.gameplay.*;
 import com.kvteam.backend.websockets.IPlayerConnection;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
  * Created by maxim on 26.03.17.
  */
+@SuppressWarnings("OverlyBroadThrowsClause")
 @Service
 public class GameService {
     private ObjectMapper mapper;
     private GameDbService dbService;
     private CardManager cardManager;
     private GameplaySettings gameplaySettings;
+
+    private ExecutorService dbExecutorService;
+    @Value("db_thread_count")
+    private String dbThreadCountStr;
+
+    private Map<UUID, ConcurrentLinkedDeque<Move>> gameMovesCache;
+    private Map<UUID, MovePlayersReadyState> currentMoveStates;
+    private Map<UUID, List<Card>> availableCardsCache;
+    private Map<UUID, List<Card>> chosenCardsCache;
 
     public GameService(
             ObjectMapper mapper,
@@ -34,29 +51,66 @@ public class GameService {
         this.dbService = dbService;
         this.cardManager = cardManager;
         this.gameplaySettings = gameplaySettings;
+
+        try{
+            final int dbThreadCount = Integer.parseInt(dbThreadCountStr);
+            if(dbThreadCount <= 0){
+                dbExecutorService = Executors.newCachedThreadPool();
+            } else if(dbThreadCount == 1){
+                dbExecutorService = Executors.newSingleThreadExecutor();
+            } else {
+                dbExecutorService = Executors.newFixedThreadPool(dbThreadCount);
+            }
+        } catch(NumberFormatException e){
+            dbExecutorService = Executors.newCachedThreadPool();
+        }
+
+        gameMovesCache = new ConcurrentHashMap<>();
+        currentMoveStates = new ConcurrentHashMap<>();
+        availableCardsCache = new ConcurrentHashMap<>();
+        chosenCardsCache = new ConcurrentHashMap<>();
+    }
+
+    @PreDestroy
+    private void joinThreads(){
+        dbExecutorService.shutdown();
     }
 
     private synchronized boolean setChosenCards(
             UUID gameID,
             Side side,
-            String serialized){
+            List<PositionedCardData> cards) throws JsonProcessingException{
+        final String serialized = mapper.writeValueAsString(cards);
         if(side == Side.ATTACKER) {
-            dbService.setChosenAttackerCards(gameID, serialized);
+            dbExecutorService.execute(() -> dbService.setChosenAttackerCards(gameID, serialized));
+            currentMoveStates.get(gameID).setAttackReady();
         } else {
-            dbService.setChosenDefenderCards(gameID, serialized);
+            dbExecutorService.execute(() -> dbService.setChosenDefenderCards(gameID, serialized));
+            currentMoveStates.get(gameID).setDefenceReady();
         }
-        return dbService.isBothReady(gameID);
+        final List<Card> forCache = cards
+                .stream()
+                .map(p -> cardManager.getCard(p.getAlias(), p.getPointData().toPoint()))
+                .collect(Collectors.toList());
+        if(chosenCardsCache.get(gameID) == null){
+            chosenCardsCache.put(gameID, forCache);
+        } else {
+            chosenCardsCache.get(gameID).addAll(forCache);
+        }
+        return currentMoveStates.get(gameID).isBothReady();
     }
 
     private synchronized boolean setRenderComplete(
             UUID gameID,
             Side side){
         if(side == Side.ATTACKER) {
-            dbService.setDefenderRenderComplete(gameID);
+            dbExecutorService.execute(() -> dbService.setDefenderRenderComplete(gameID));
+            currentMoveStates.get(gameID).setAttackRenderComplete();
         } else {
-            dbService.setAttackerRenderComplete(gameID);
+            dbExecutorService.execute(() -> dbService.setAttackerRenderComplete(gameID));
+            currentMoveStates.get(gameID).setDefenceRenderComplete();
         }
-        return dbService.isBothRenderComplete(gameID);
+        return currentMoveStates.get(gameID).isBothRenderComplete();
     }
 
     private String serializeMoveResult(
@@ -87,6 +141,115 @@ public class GameService {
         return mapper.writeValueAsString(result);
     }
 
+    private List<Card> getAvailableCards(UUID gameID){
+        if(availableCardsCache.containsKey(gameID)
+                && availableCardsCache.get(gameID) != null){
+            return availableCardsCache.get(gameID);
+        }else{
+            return dbService.getAvailableCardsForCurrentMove(gameID);
+        }
+    }
+
+    private List<Card> getChosenCards(UUID gameID){
+        if(chosenCardsCache.containsKey(gameID)
+                && chosenCardsCache.get(gameID) != null){
+            return chosenCardsCache.get(gameID);
+        }else{
+            return dbService.getChosenCardsForCurrentMove(gameID);
+        }
+    }
+
+    @Nullable
+    private Move getPreviousMove(UUID gameID){
+        final Move move = gameMovesCache.containsKey(gameID) ?
+                          gameMovesCache.get(gameID).poll() :
+                          null;
+        return move != null ? move : dbService.getLastMove(gameID) ;
+    }
+
+    @Nullable
+    private Move getCurrentMove(UUID gameID){
+        final Move move = gameMovesCache.containsKey(gameID) ?
+                gameMovesCache.get(gameID).getLast() :
+                null;
+        return move != null ? move : dbService.getLastMove(gameID) ;
+    }
+
+    private void createMove(
+            UUID gameID,
+            List<Card> forAttack,
+            List<Card> forDefence){
+        currentMoveStates.put(gameID, new MovePlayersReadyState());
+        // Запоминаются выданные карты в кэше
+        final List<Card> availableCards = new ArrayList<>();
+        availableCards.addAll(forAttack);
+        availableCards.addAll(forDefence);
+        availableCardsCache.put(gameID, availableCards);
+        // Выданные карты сохраняются в базу
+        final List<CardData> forDefenceCardData = forDefence
+                .stream()
+                .map(p -> new CardData(p.getAlias()))
+                .collect(Collectors.toList());
+        final List<CardData> forAttackCardData = forAttack
+                .stream()
+                .map(p -> new CardData(p.getAlias()))
+                .collect(Collectors.toList());
+        dbExecutorService.execute( () -> {
+            try {
+                dbService.insertMove(
+                        gameID,
+                        gameplaySettings.getMaxCastleHP(),
+                        mapper.writeValueAsString(forAttackCardData),
+                        mapper.writeValueAsString(forDefenceCardData)
+                );
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void completeMove(
+            UUID gameID,
+            Move move,
+            List<UnitData> units,
+            List<UnitData> alive,
+            List<ActionData> actions){
+        dbExecutorService.execute( () -> {
+            try {
+                dbService.completeMove(
+                        gameID,
+                        move.getCurrentMove(),
+                        move.getInitialCastleHP(),
+                        mapper.writeValueAsString(units),
+                        mapper.writeValueAsString(alive),
+                        mapper.writeValueAsString(actions));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void completeMatch(
+            UUID gameID,
+            GameDbService.WinnerType winner,
+            IPlayerConnection me,
+            IPlayerConnection other) throws IOException{
+        dbExecutorService.execute(() -> {
+            try{
+                dbService.completeMatch(gameID, winner);
+            }catch(SQLException e){
+                e.printStackTrace();
+            }
+        });
+        currentMoveStates.remove(gameID);
+        gameMovesCache.remove(gameID);
+        me.markAsCompletion();
+        other.markAsCompletion();
+        me.close();
+        other.close();
+
+    }
+
     private void startMatch(
             IPlayerConnection attacker,
             IPlayerConnection defender)
@@ -95,49 +258,48 @@ public class GameService {
                 || defender.getUsername() == null){
             throw new NullPointerException();
         }
+        // Создается запись в базе о новом матче(синхронно)
         final UUID gameID = dbService.insertNewMatch(
                 attacker.getUsername(),
                 defender.getUsername(),
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP()
         );
-        attacker.markAsPlaying(gameID);
-        defender.markAsPlaying(gameID);
+        // Создаем кэш для новой игры
+        gameMovesCache.put(gameID, new ConcurrentLinkedDeque<>());
 
-        final List<CardData> forAttack = cardManager
-                .getCardsForMove(Side.ATTACKER, 1)
-                .stream()
-                .map(p -> new CardData(p.getAlias()))
-                .collect(Collectors.toList());
-        final List<CardData> forDefence = cardManager
-                .getCardsForMove(Side.DEFENDER, 1)
-                .stream()
-                .map(p -> new CardData(p.getAlias()))
-                .collect(Collectors.toList());
-        dbService.insertMove(
-                gameID,
-                gameplaySettings.getMaxCastleHP(),
-                mapper.writeValueAsString(forAttack),
-                mapper.writeValueAsString(forDefence)
-        );
+        // Выделяются карты для выбора
+        final List<Card> forAttack = cardManager
+                .getCardsForMove(Side.ATTACKER, 1);
+        final List<Card> forDefence = cardManager
+                .getCardsForMove(Side.DEFENDER, 1);
 
+        // Ход записывается в кэши и в базу
+        createMove(gameID, forAttack, forDefence);
+
+        // Инфа переводится в формат общения клиент-сервер и отправляется и клиенту
+        final List<CardData> forAttackCardData =
+                forAttack.stream().map(p -> new CardData(p.getAlias())).collect(Collectors.toList());
+        final List<CardData> forDefenceCardData =
+                forDefence.stream().map(p -> new CardData(p.getAlias())).collect(Collectors.toList());
         final GameStartData startDataAttack = new GameStartData(
                 gameID,
                 defender.getUsername(),
                 "attack",
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP(),
-                forAttack);
-
+                forAttackCardData);
         final GameStartData startDataDefence = new GameStartData(
                 gameID,
                 attacker.getUsername(),
                 "defence",
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP(),
-                forDefence);
+                forDefenceCardData);
         attacker.send(mapper.writeValueAsString(startDataAttack));
         defender.send(mapper.writeValueAsString(startDataDefence));
+        attacker.markAsPlaying(gameID);
+        defender.markAsPlaying(gameID);
     }
 
     private void processChatMessage(
@@ -163,60 +325,64 @@ public class GameService {
             throw new NullPointerException();
         }
         final UUID gameID = me.getGameID();
-        // Тут просто заполняем выбранные карты.
-        final String serialized = mapper.writeValueAsString(clientData.getCards());
-        // Синхронная вставка, узкое место.
-        if(!setChosenCards(gameID, side, serialized)){
+        if(!setChosenCards(gameID, side, clientData.getCards())){
             return;
         }
 
         // А вот тут уже интересно. Считаем ход
         // Получаем разрешенные и выбранные карты и сопоставляем их
-        final List<Card> availableCards = dbService.getAvailableCardsForCurrentMove(me.getGameID());
-        final List<Card> chosenCards = dbService.getChosenCardsForCurrentMove(me.getGameID());
+        final List<Card> availableCards = getAvailableCards(gameID);
+        final List<Card> chosenCards = getChosenCards(gameID);
         final List<Card> cards = chosenCards.stream().filter(availableCards::contains).collect(Collectors.toList());
         // Предыдущий ход, если он был
-        final Move previousMove = dbService.getLastMove(me.getGameID());
+        final Move previousMove = getPreviousMove(gameID);
         // Составляем базовую информацию о ходе
         final Move move = previousMove != null ?
                                 new Move(previousMove) : // Если это не первый ход, за основу предыдущий
                                 new Move(gameplaySettings.getMaxCastleHP()); // Иначе первый инициализируем
         // Рассчет хода
         MoveProcessor.processMove(cards, move);
+        // Запишем результаты в кэш
+        if(!gameMovesCache.containsKey(gameID)){
+            // Если вдруг каким то странным и непонятным образом не будет записи
+            gameMovesCache.put(gameID, new ConcurrentLinkedDeque<>());
+        }
+        gameMovesCache.get(gameID).offer(move);
 
         // Собираем результаты хода
-        final List<UnitData> units =  move.getUnits().stream().map(p ->
-                new UnitData(
-                        p.getUnitID(),
-                        p.getAssotiatedCardAlias(),
-                        p.getMaxHP(),
-                        p.getCurrentHP(),
-                        new PointData(p.getStartPoint()))).collect(Collectors.toList());
-        final List<ActionData> actions = move.getActions().stream().map(p ->
-                new ActionData(
-                        p.getActor().getUnitID(),
-                        p.getActionType().toString(),
-                        p.getActionParams(),
-                        p.getBeginOffset(),
-                        p.getEndOffset()
-                )
-        ).collect(Collectors.toList());
-        final List<UnitData> alive =  move.getAliveUnits().stream().map(p ->
-                new UnitData(
-                        p.getUnitID(),
-                        p.getAssotiatedCardAlias(),
-                        p.getMaxHP(),
-                        p.getCurrentHP(),
-                        new PointData(p.getStartPoint()))).collect(Collectors.toList());
+        final List<UnitData> units =  move.getUnits()
+                .stream()
+                .map(p ->
+                    new UnitData(
+                            p.getUnitID(),
+                            p.getAssotiatedCardAlias(),
+                            p.getMaxHP(),
+                            p.getCurrentHP(),
+                            new PointData(p.getStartPoint())))
+                .collect(Collectors.toList());
+        final List<ActionData> actions = move.getActions()
+                .stream()
+                .map(p ->
+                    new ActionData(
+                            p.getActor().getUnitID(),
+                            p.getActionType().toString(),
+                            p.getActionParams(),
+                            p.getBeginOffset(),
+                            p.getEndOffset()))
+                .collect(Collectors.toList());
+        final List<UnitData> alive =  move.getAliveUnits()
+                .stream()
+                .map(p ->
+                    new UnitData(
+                            p.getUnitID(),
+                            p.getAssotiatedCardAlias(),
+                            p.getMaxHP(),
+                            p.getCurrentHP(),
+                            new PointData(p.getStartPoint())))
+                .collect(Collectors.toList());
 
         // Запись в базу информации о ходе(следующему пригодится)
-        dbService.completeMove(
-                gameID,
-                move.getCurrentMove(),
-                move.getInitialCastleHP(),
-                mapper.writeValueAsString(units),
-                mapper.writeValueAsString(alive),
-                mapper.writeValueAsString(actions));
+        completeMove(gameID, move, units, alive, actions);
         // Возвращаем клиенту все что насчитали
         final String answer = serializeMoveResult(gameID, move, units, actions);
         me.send(answer);
@@ -227,7 +393,7 @@ public class GameService {
             IPlayerConnection me,
             IPlayerConnection other,
             Side side,
-            RenderCompleteClientData data) throws IOException, SQLException{
+            @SuppressWarnings("unused") RenderCompleteClientData data) throws IOException{
         if(me.getGameID() == null){
             throw new NullPointerException();
         }
@@ -236,53 +402,37 @@ public class GameService {
         if(!setRenderComplete(gameID, side)){
             return;
         }
-        final Move previousMove = dbService.getLastMove(me.getGameID());
-        if(previousMove == null){
-            throw new NullPointerException();
+        // Ход, по которому только что было отрендерено
+        // Он сохраняется, с учетом него будет считаться след. ход
+        // Удалится после записи след. хода в кэш
+        final Move move = getCurrentMove(gameID);
+        if(move == null){
+            throw new NullPointerException("Потерялся последний ход");
         }
 
-        if(previousMove.getCurrentCastleHP() <= 0){
+        if(move.getCurrentCastleHP() <= 0){
             // Разбили замок, завершаем игру с победой атакующего
-            dbService.completeMatch(me.getGameID(), GameDbService.WinnerType.ATTACKER);
-            me.markAsCompletion();
-            other.markAsCompletion();
-            me.close();
-            other.close();
-        } else if(previousMove.getCurrentMove() >= gameplaySettings.getMaxMovesCount()){
+            completeMatch(gameID, GameDbService.WinnerType.ATTACKER, me, other);
+        } else if(move.getCurrentMove() >= gameplaySettings.getMaxMovesCount()){
             // Прошло максимальное количество ходов, завершаем игру с победой защиты
-            dbService.completeMatch(me.getGameID(), GameDbService.WinnerType.DEFENDER);
-            me.markAsCompletion();
-            other.markAsCompletion();
-            me.close();
-            other.close();
+            completeMatch(gameID, GameDbService.WinnerType.DEFENDER, me, other);
         } else {
             // Продолжаем игру, выделяем карточки для следующего хода
-            final List<CardData> forAttack = cardManager
-                    .getCardsForMove(Side.ATTACKER, previousMove.getCurrentMove() + 1)
-                    .stream()
-                    .map(p -> new CardData(p.getAlias()))
-                    .collect(Collectors.toList());
-            final List<CardData> forDefence = cardManager
-                    .getCardsForMove(Side.DEFENDER, previousMove.getCurrentMove() + 1)
-                    .stream()
-                    .map(p -> new CardData(p.getAlias()))
-                    .collect(Collectors.toList());
-            dbService.insertMove(
-                    me.getGameID(),
-                    previousMove.getCurrentCastleHP(),
-                    mapper.writeValueAsString(forAttack),
-                    mapper.writeValueAsString(forDefence)
-            );
+            final List<Card> forAttack = cardManager
+                    .getCardsForMove(Side.ATTACKER, move.getCurrentMove() + 1);
+            final List<Card> forDefence = cardManager
+                    .getCardsForMove(Side.DEFENDER, move.getCurrentMove() + 1);
+            createMove(gameID, forAttack, forDefence);
 
-            final CardsForNextMoveGameServerData cardAttackData
-                    = new CardsForNextMoveGameServerData(
-                        me.getGameID(),
-                        forAttack);
+            final List<CardData> forAttackCardData =
+                    forAttack.stream().map(p -> new CardData(p.getAlias())).collect(Collectors.toList());
+            final CardsForNextMoveGameServerData cardAttackData =
+                    new CardsForNextMoveGameServerData(gameID, forAttackCardData);
 
-            final CardsForNextMoveGameServerData cardDefenceData
-                    = new CardsForNextMoveGameServerData(
-                        me.getGameID(),
-                        forDefence);
+            final List<CardData> forDefenceCardData =
+                    forAttack.stream().map(p -> new CardData(p.getAlias())).collect(Collectors.toList());
+            final CardsForNextMoveGameServerData cardDefenceData =
+                    new CardsForNextMoveGameServerData(gameID, forDefenceCardData);
 
             if(side == Side.ATTACKER){
                 me.send(mapper.writeValueAsString(cardAttackData));
@@ -297,7 +447,7 @@ public class GameService {
     private void processClose(
             IPlayerConnection me,
             IPlayerConnection other,
-            CloseClientData data){
+            @SuppressWarnings("unused") CloseClientData data){
         try{
             me.close();
             other.close();
@@ -316,6 +466,11 @@ public class GameService {
             throw new NullPointerException();
         }
         try {
+            if(me.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING
+                    || me.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING){
+                throw new InvalidPlayerConnectionStateException();
+            }
+
             final GameClientData baseData = mapper.readValue(message, GameClientData.class);
             if(baseData.getStatus().equals(GameClientData.SEND_CHAT_MESSAGE)){
                 final MessageClientData data = mapper.readValue(message, MessageClientData.class);
@@ -336,24 +491,31 @@ public class GameService {
         }
     }
 
-    private void close(IPlayerConnection me, IPlayerConnection other){
+    private void close(
+            @SuppressWarnings("unused") IPlayerConnection me,
+            IPlayerConnection other){
         try {
+            final UUID gameID = other.getGameID();
             other.close();
-        } catch(IOException ignored) {
-
+            chosenCardsCache.remove(gameID);
+            availableCardsCache.remove(gameID);
+            currentMoveStates.remove(gameID);
+            gameMovesCache.remove(gameID);
+        } catch(IOException e) {
+            e.printStackTrace();
         }
     }
 
     public void startGame(IPlayerConnection attacker, IPlayerConnection defender){
         try {
+            startMatch(attacker, defender);
+
             // При получении информации с клиента будет вызываться receive,
             // Причем, за счет замыканий, в методе будут доступны оба игрока
             attacker.onReceive((conn, str) -> receive(conn, defender, Side.ATTACKER, str));
             defender.onReceive((conn, str) -> receive(conn, attacker, Side.DEFENDER, str));
             attacker.onClose((conn, status) -> close(conn, defender));
             defender.onClose((conn, status) -> close(conn, attacker));
-
-            startMatch(attacker, defender);
         } catch (IOException
                 | NullPointerException
                 | SQLException e) {
@@ -366,8 +528,12 @@ public class GameService {
             IPlayerConnection me,
             IPlayerConnection other){
         e.printStackTrace();
+        final UUID gameID = me.getGameID() != null ?
+                me.getGameID() :
+                UUID.fromString("00000000-0000-0000-0000-000000000000");
         try {
-            me.send(mapper.writeValueAsString(new ErrorGameServerData(me.getGameID())));
+            final ErrorGameServerData data = new ErrorGameServerData(gameID);
+            me.send(mapper.writeValueAsString(data));
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException jpe){
             jpe.printStackTrace();
         }
@@ -377,11 +543,15 @@ public class GameService {
         other.onClose(null);
         me.onReceive(null);
         other.onReceive(null);
+        chosenCardsCache.remove(gameID);
+        availableCardsCache.remove(gameID);
+        currentMoveStates.remove(gameID);
+        gameMovesCache.remove(gameID);
         try {
             me.close();
             other.close();
-        } catch (IOException ignored) {
-
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
     }
 

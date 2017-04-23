@@ -6,11 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import javax.validation.constraints.Null;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -18,12 +14,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @Service
 public class MatchmakingService {
-    public enum Role{
-        ATTACK,
-        DEFENCE,
-        ALL
-    };
-
     private Queue<IPlayerConnection> defencePlayers =
             new ConcurrentLinkedQueue<>();
 
@@ -53,37 +43,35 @@ public class MatchmakingService {
             @NotNull String side){
         connection.markAsMatchmaking();
         if(side.equals("attack")) {
-            final IPlayerConnection player = getFirstOpenPlayer(defencePlayers);
-            if (player != null) {
-                gameService.startGame(connection, player);
-            } else {
-                connection.onClose((playerConnection, status) -> System.out.println("Передумал " + playerConnection.getUsername()) );
-                attackPlayers.add(connection);
-            }
+            processPlayer(connection, attackPlayers);
         }else if(side.equals("defence")){
-            final IPlayerConnection player = getFirstOpenPlayer(attackPlayers);
-            if(player != null){
-                gameService.startGame(player, connection);
-            }else{
-                connection.onClose((playerConnection, status) -> System.out.println("Передумал " + playerConnection.getUsername()) );
-                defencePlayers.add(connection);
-            }
+            processPlayer(connection, defencePlayers);
         }else if(side.equals("all")){
-            final IPlayerConnection player = getFirstOpenPlayer(anyTeamPlayers);
-            if(player != null){
-                gameService.startGame(player, connection);
-            }else{
-                connection.onClose((playerConnection, status) -> System.out.println("Передумал " + playerConnection.getUsername()) );
-                anyTeamPlayers.add(connection);
-            }
+            processPlayer(connection, anyTeamPlayers);
         }else{
             connection.markAsErrorable();
         }
     }
 
+    @SuppressWarnings("Duplicates")
+    private void processPlayer(IPlayerConnection connection, Queue<IPlayerConnection> otherPlayers){
+        final IPlayerConnection player = getFirstOpenPlayer(otherPlayers);
+        if(player != null){
+            connection.onClose(null);
+            connection.onReceive(null);
+            player.onClose(null);
+            player.onReceive(null);
+            gameService.startGame(player, connection);
+        } else {
+            connection.onClose((playerConnection, status) -> otherPlayers.remove(playerConnection));
+            connection.onReceive(null);
+            otherPlayers.add(connection);
+        }
+    }
+
     // Закрытые сокеты - заблудшие души в матчмейкере
-    @Scheduled(fixedDelay = 1000 * 30)
-    void deleteLostConnections(){
+    @Scheduled(fixedDelay = 1000 * 60)
+    private void deleteLostConnections(){
         attackPlayers.removeIf(IPlayerConnection::isClosed);
         defencePlayers.removeIf(IPlayerConnection::isClosed);
         anyTeamPlayers.removeIf(IPlayerConnection::isClosed);
