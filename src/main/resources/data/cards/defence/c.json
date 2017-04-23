@@ -4,5 +4,7 @@
     "side": "DEFENDER",
     "maxHP": 1,
     "attack": 1,
-    "range": 1
+    "timeAttack": 300,
+    "range": 0.2,
+    "velocity": 0
 }

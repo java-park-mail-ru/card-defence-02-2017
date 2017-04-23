@@ -4,5 +4,7 @@
     "side": "ATTACKER",
     "maxHP": 1,
     "attack": 1,
-    "range": 1
+    "timeAttack": 300,
+    "range": 0.05,
+    "velocity": 0.2
 }

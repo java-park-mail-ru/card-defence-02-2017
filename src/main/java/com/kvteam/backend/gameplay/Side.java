@@ -5,5 +5,6 @@ package com.kvteam.backend.gameplay;
  */
 public enum Side{
     ATTACKER,
-    DEFENDER
+    DEFENDER,
+    UNKNOWN
 }

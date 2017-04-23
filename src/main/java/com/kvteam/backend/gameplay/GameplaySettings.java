@@ -17,6 +17,9 @@ import javax.annotation.PostConstruct;
 public class GameplaySettings {
     private int maxMovesCount;
     private int maxCastleHP;
+    private double castleRange;
+    private int castleAttack;
+    private int castleTimeAttack;
     @Autowired
     private ResourceFactory resourceFactory;
 
@@ -30,6 +33,18 @@ public class GameplaySettings {
         maxCastleHP = res.anyGet("maxCastleHP") != null ?
                       (int)res.anyGet("maxCastleHP") :
                       1;
+
+        castleRange = res.anyGet("castleRange") != null ?
+                      (double)res.anyGet("castleRange") :
+                      1;
+
+        castleAttack = res.anyGet("castleAttack") != null ?
+                       (int)res.anyGet("castleAttack") :
+                       1;
+
+        castleTimeAttack = res.anyGet("castleTimeAttack") != null ?
+                           (int)res.anyGet("castleTimeAttack") :
+                           1;
     }
 
     public int getMaxMovesCount(){
@@ -38,5 +53,17 @@ public class GameplaySettings {
 
     public int getMaxCastleHP(){
         return maxCastleHP;
+    }
+
+    public double getCastleRange(){
+        return castleRange;
+    }
+
+    public int getCastleAttack(){
+        return castleAttack;
+    }
+
+    public int getCastleTimeAttack(){
+        return castleTimeAttack;
     }
 }

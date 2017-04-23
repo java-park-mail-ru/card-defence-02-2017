@@ -15,8 +15,10 @@ public class Card extends Resource{
     @NotNull
     private Side side;
     private int maxHP;
-    private double attack;
+    private int attack;
+    private int timeAttack;
     private double range;
+    private double velocity;
     @Nullable
     private Point startPosition;
 
@@ -28,14 +30,18 @@ public class Card extends Resource{
          @JsonProperty("alias") @NotNull String alias,
          @JsonProperty("side") @NotNull Side side,
          @JsonProperty("maxHP") int maxHP,
-         @JsonProperty("attack") double attack,
-         @JsonProperty("range") double range){
+         @JsonProperty("attack") int attack,
+         @JsonProperty("timeAttack") int timeAttack,
+         @JsonProperty("range") double range,
+         @JsonProperty("velocity") double velocity){
         super(type);
         this.alias = alias;
         this.side = side;
         this.maxHP = maxHP;
         this.attack = attack;
+        this.timeAttack = timeAttack;
         this.range = range;
+        this.velocity = velocity;
         this.startPosition = null;
     }
 
@@ -44,7 +50,9 @@ public class Card extends Resource{
         this.side = card.side;
         this.maxHP = card.maxHP;
         this.attack = card.attack;
+        this.timeAttack = card.timeAttack;
         this.range = card.range;
+        this.velocity = card.velocity;
         this.startPosition = card.startPosition;
     }
 
@@ -53,7 +61,9 @@ public class Card extends Resource{
         this.side = card.side;
         this.maxHP = card.maxHP;
         this.attack = card.attack;
+        this.timeAttack = card.timeAttack;
         this.range = card.range;
+        this.velocity = card.velocity;
         this.startPosition = startPosition;
     }
 
@@ -71,14 +81,23 @@ public class Card extends Resource{
         return maxHP;
     }
 
-    public double getAttack(){
+    public int getAttack(){
         return attack;
+    }
+
+    public int getTimeAttack() {
+        return timeAttack;
     }
 
     public double getRange(){
         return range;
     }
 
+    public double getVelocity() {
+        return velocity;
+    }
+
+    @SuppressWarnings("unused")
     void setStartPosition(@Nullable Point position){
         this.startPosition = position;
     }
@@ -90,11 +109,16 @@ public class Card extends Resource{
 
     @Override
     public boolean equals(Object other){
-        return hashCode() == other.hashCode();
+        return other instanceof Card && hashCode() == other.hashCode();
     }
 
     @Override
     public int hashCode(){
         return alias.hashCode();
+    }
+
+    @Override
+    public String toString(){
+        return alias;
     }
 }

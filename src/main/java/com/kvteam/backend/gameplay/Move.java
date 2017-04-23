@@ -4,7 +4,7 @@ import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by maxim on 03.04.17.
@@ -32,11 +32,11 @@ public class Move {
     }
 
     // Построение на основе предыдущего хода
-    public Move(@NotNull Move prevMove){
+    public Move(Move prevMove){
         this.currentMove = prevMove.currentMove + 1;
         this.initialCastleHP = this.currentCastleHP = prevMove.currentCastleHP;
-        this.units = new ArrayList<>(prevMove.aliveUnits);
-        this.aliveUnits = new ArrayList<>(prevMove.aliveUnits);
+        this.units = prevMove.aliveUnits.stream().map(Unit::new).collect(Collectors.toList());
+        this.aliveUnits = prevMove.aliveUnits.stream().map(Unit::new).collect(Collectors.toList());
         this.actions = new ArrayList<>();
     }
 
@@ -63,8 +63,11 @@ public class Move {
         return currentCastleHP;
     }
 
-    public void decrementCastleHP(int value){
-        currentCastleHP -= value;
+    public int decrementCastleHP(int value){
+        currentCastleHP = (currentCastleHP - value > 0) ?
+                currentCastleHP - value :
+                0;
+        return currentCastleHP;
     }
 
     // Это нужно будет скинуть на клиент
@@ -82,7 +85,9 @@ public class Move {
         // в первом будут хранится изначальные данные
         // над вторым будет вестись обработка
         // Предполагается, что массив будет заполнен до начала обработки
-        units.add(unit);
+        units.removeIf( u -> u.getStartPoint().equals(unit.getStartPoint()));
+        aliveUnits.removeIf( u -> u.getStartPoint().equals(unit.getStartPoint()));
+        units.add(new Unit(unit));
         aliveUnits.add(unit);
     }
 
@@ -92,5 +97,14 @@ public class Move {
 
     public void addAction(@NotNull Action action){
         actions.add(action);
+    }
+
+    @Override
+    public String toString(){
+        return "MoveNumber:" + currentMove
+                + ", castleHP(initial/current):" + initialCastleHP + '/' + currentCastleHP
+                + ", unitsCount:" + units.size()
+                + ", aliveUnitsCount:" + aliveUnits.size()
+                + ", actionsCount:" + actions.size();
     }
 }

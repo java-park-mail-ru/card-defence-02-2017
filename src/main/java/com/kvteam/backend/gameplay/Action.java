@@ -1,6 +1,7 @@
 package com.kvteam.backend.gameplay;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,6 +12,8 @@ import java.util.Map;
 public class Action {
     @NotNull
     private Unit actor;
+    @NotNull
+    private Unit actorSnapshot;
     @NotNull
     private ActionType type;
     @NotNull

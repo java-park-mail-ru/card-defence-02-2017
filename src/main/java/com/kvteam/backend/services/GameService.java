@@ -341,7 +341,7 @@ public class GameService {
                                 new Move(previousMove) : // Если это не первый ход, за основу предыдущий
                                 new Move(gameplaySettings.getMaxCastleHP()); // Иначе первый инициализируем
         // Рассчет хода
-        MoveProcessor.processMove(cards, move);
+        MoveProcessor.processMove(gameplaySettings, cards, move);
         // Запишем результаты в кэш
         if(!gameMovesCache.containsKey(gameID)){
             // Если вдруг каким то странным и непонятным образом не будет записи

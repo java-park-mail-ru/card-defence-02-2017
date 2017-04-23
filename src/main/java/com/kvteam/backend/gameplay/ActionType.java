@@ -29,7 +29,7 @@ public final class ActionType {
 
     @Override
     public boolean equals(Object other){
-        return this.hashCode() == other.hashCode();
+        return other instanceof ActionType && this.hashCode() == other.hashCode();
     }
 
     @Override

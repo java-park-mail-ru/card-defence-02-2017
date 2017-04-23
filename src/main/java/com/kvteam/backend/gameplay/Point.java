@@ -7,6 +7,7 @@ import com.kvteam.backend.dataformats.PointData;
 /**
  * Created by maxim on 04.04.17.
  */
+@SuppressWarnings("EqualsAndHashcode")
 public class Point {
     private int xCoord;
     private int yCoord;
@@ -39,4 +40,15 @@ public class Point {
         this.yCoord = y;
     }
 
+    @Override
+    public boolean equals(Object p){
+        return p instanceof Point
+                && xCoord == ((Point)p).xCoord
+                && yCoord == ((Point)p).yCoord;
+    }
+
+    @Override
+    public String toString(){
+        return '(' + Integer.toString(xCoord) + ',' + Integer.toString(yCoord) + ')';
+    }
 }
