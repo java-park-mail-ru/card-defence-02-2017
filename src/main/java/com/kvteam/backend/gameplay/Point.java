@@ -1,9 +1,5 @@
 package com.kvteam.backend.gameplay;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.kvteam.backend.dataformats.PointData;
-
 /**
  * Created by maxim on 04.04.17.
  */
