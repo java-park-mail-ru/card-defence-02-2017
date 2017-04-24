@@ -27,4 +27,8 @@ public class CardsForNextMoveGameServerData extends GameServerData {
         super(status, gameID);
         this.allowedCards = allowedCards;
     }
+
+    public List<CardData> getAllowedCards(){
+        return allowedCards;
+    }
 }

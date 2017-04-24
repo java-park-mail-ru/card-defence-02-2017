@@ -1,5 +1,6 @@
 package com.kvteam.backend.dataformats;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,14 +22,14 @@ public class GameStartData extends CardsForNextMoveGameServerData {
     @JsonProperty("castleMaxHP")
     private int castleMaxHP;
 
-
+    @JsonCreator
     public GameStartData(
-            @NotNull UUID gameID,
-            @NotNull String enemyUsername,
-            @NotNull String side,
-            int movesCount,
-            int castleMaxHP,
-            List<CardData> allowedCards){
+            @JsonProperty("gameID") @NotNull UUID gameID,
+            @JsonProperty("enemyUsername") @NotNull String enemyUsername,
+            @JsonProperty("side") @NotNull String side,
+            @JsonProperty("movesCount") int movesCount,
+            @JsonProperty("castleMaxHP") int castleMaxHP,
+            @JsonProperty("allowedCards") List<CardData> allowedCards){
         super(GameServerData.START, gameID, allowedCards);
         this.side = side;
         this.enemyUsername = enemyUsername;
