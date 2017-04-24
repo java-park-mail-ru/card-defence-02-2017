@@ -38,24 +38,61 @@ public class MatchmakingService {
         return conn;
     }
 
+    @Nullable
+    private IPlayerConnection getFirstOpenPlayer(String side) throws Exception{
+        IPlayerConnection conn;
+        if(side.equals("all")){
+            conn = getFirstOpenPlayer(anyTeamPlayers);
+            if(conn == null){
+                conn = getFirstOpenPlayer(defencePlayers);
+            }
+            if(conn == null){
+                conn = getFirstOpenPlayer(attackPlayers);
+            }
+        }else if(side.equals("attack")){
+            conn = getFirstOpenPlayer(defencePlayers);
+            if(conn == null){
+                conn = getFirstOpenPlayer(anyTeamPlayers);
+            }
+        }else if(side.equals("defence")){
+            conn = getFirstOpenPlayer(attackPlayers);
+            if(conn == null){
+                conn = getFirstOpenPlayer(anyTeamPlayers);
+            }
+        } else {
+            throw new Exception("Wrong side");
+        }
+        return conn;
+    }
+
+    public Queue<IPlayerConnection> getSamePlayers(String side) throws Exception{
+        if(side.equals("all")){
+            return anyTeamPlayers;
+        }else if(side.equals("attack")){
+            return attackPlayers;
+        }else if(side.equals("defence")){
+            return defencePlayers;
+        } else {
+            throw new Exception("Wrong side");
+        }
+    }
+
     public synchronized void addPlayer(
             @NotNull IPlayerConnection connection,
             @NotNull String side){
         connection.markAsMatchmaking();
-        if(side.equals("attack")) {
-            processPlayer(connection, attackPlayers);
-        }else if(side.equals("defence")){
-            processPlayer(connection, defencePlayers);
-        }else if(side.equals("all")){
-            processPlayer(connection, anyTeamPlayers);
-        }else{
+        try{
+            processPlayer(connection, side);
+        }catch(Exception e){
             connection.markAsErrorable();
         }
     }
 
     @SuppressWarnings("Duplicates")
-    private void processPlayer(IPlayerConnection connection, Queue<IPlayerConnection> otherPlayers){
-        final IPlayerConnection player = getFirstOpenPlayer(otherPlayers);
+    private void processPlayer(
+            IPlayerConnection connection,
+            String side) throws Exception{
+        final IPlayerConnection player = getFirstOpenPlayer(side);
         if(player != null){
             connection.onClose(null);
             connection.onReceive(null);
@@ -63,9 +100,10 @@ public class MatchmakingService {
             player.onReceive(null);
             gameService.startGame(player, connection);
         } else {
-            connection.onClose((playerConnection, status) -> otherPlayers.remove(playerConnection));
+            final Queue<IPlayerConnection> samePlayers = getSamePlayers(side);
+            connection.onClose((playerConnection, status) -> samePlayers.remove(playerConnection));
             connection.onReceive(null);
-            otherPlayers.add(connection);
+            samePlayers.add(connection);
         }
     }
 
