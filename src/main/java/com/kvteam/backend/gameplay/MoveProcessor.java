@@ -276,7 +276,7 @@ public final class MoveProcessor {
             String towerPosition,
             Unit unit){
         unit.decrementHP(context.castleAttack);
-        final Action action =new Action(
+        final Action action = new Action(
                 towerPosition.equals("top") ? CastleTowers.TOP: CastleTowers.BOTTOM,
                 ActionType.CASTLE_ATTACK);
         action.addActionParam("tower", towerPosition);
@@ -356,17 +356,13 @@ public final class MoveProcessor {
     }
 
     private static void moveEachUnit(MoveProcessorContext context, Unit unit){
-        final double distance = obstacleInFront(unit, context);
+        final double distanceToObstacle = obstacleInFront(unit, context);
         final double distancePerTick = moveDistance(unit, TIME_DELTA);
-        if(!restAgainstObstacle(distance)) {
-            if(distancePerTick < distance){
-                unit.incrementOffset(distancePerTick);
-                context.activeActions.get(unit).setEndOffset(context.time + TIME_DELTA);
-            }else{
-                unit.incrementOffset(distance);
-                context.activeActions.get(unit).setEndOffset(
-                        context.time + (int)(distance / unit.getVelocity() * TIME_DELTA));
-            }
+        if(!restAgainstObstacle(distanceToObstacle)) {
+            final double distance = Math.min(distancePerTick, distanceToObstacle);
+            unit.incrementOffset(distance);
+            context.activeActions.get(unit).setEndOffset(context.time + (int)(distance / distancePerTick * TIME_DELTA));
+            context.activeActions.get(unit).addActionParam("pos", distance);
         }
     }
 
