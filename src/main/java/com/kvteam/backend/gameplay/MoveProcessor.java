@@ -69,7 +69,6 @@ public final class MoveProcessor {
         while(isMoveContinuous(context)){
             removeOldActiveActions(context);
 
-            // TODO: значения из настроек игры
             castleAttack(context);
 
             towerAttack(context);
