@@ -116,7 +116,8 @@ public class GameService {
     private String serializeMoveResult(
             @NotNull UUID gameID,
             @NotNull Move move,
-            @NotNull List<UnitData> units,
+            @NotNull List<UnitData> myUnits,
+            @NotNull List<UnitData> enemyUnits,
             @NotNull List<ActionData> actions) throws JsonProcessingException{
         final MoveResultGameServerData result;
         if(move.getCurrentCastleHP() <= 0
@@ -126,7 +127,8 @@ public class GameService {
                     move.getCurrentMove(),
                     move.getInitialCastleHP(),
                     move.getCurrentCastleHP() <= 0,
-                    units,
+                    myUnits,
+                    enemyUnits,
                     actions
             );
         } else {
@@ -134,45 +136,66 @@ public class GameService {
                     gameID,
                     move.getCurrentMove(),
                     move.getInitialCastleHP(),
-                    units,
+                    myUnits,
+                    enemyUnits,
                     actions
             );
         }
         return mapper.writeValueAsString(result);
     }
 
+    private void separateUnits(
+            List<Unit> units,
+            List<UnitData> attackUnits,
+            List<UnitData> allUnits,
+            List<UnitData> defenceUnits){
+        for(Unit unit: units){
+            final Side unitSide = unit.getSide();
+            final UnitData data = new UnitData(
+                    unit.getUnitID(),
+                    unit.getAssotiatedCardAlias(),
+                    unit.getMaxHP(),
+                    unit.getCurrentHP(),
+                    new PointData(unit.getStartPoint()));
+            allUnits.add(data);
+            if(unitSide == Side.ATTACKER){
+                attackUnits.add(data);
+            } else if(unitSide == Side.DEFENDER){
+                defenceUnits.add(data);
+            }
+        }
+    }
+
+    @Nullable
     private List<Card> getAvailableCards(UUID gameID){
         if(availableCardsCache.containsKey(gameID)
                 && availableCardsCache.get(gameID) != null){
             return availableCardsCache.get(gameID);
-        }else{
-            return dbService.getAvailableCardsForCurrentMove(gameID);
         }
+        return null;
     }
 
+    @Nullable
     private List<Card> getChosenCards(UUID gameID){
         if(chosenCardsCache.containsKey(gameID)
                 && chosenCardsCache.get(gameID) != null){
             return chosenCardsCache.get(gameID);
-        }else{
-            return dbService.getChosenCardsForCurrentMove(gameID);
         }
+        return null;
     }
 
     @Nullable
     private Move getPreviousMove(UUID gameID){
-        final Move move = gameMovesCache.containsKey(gameID) ?
+        return gameMovesCache.containsKey(gameID) ?
                           gameMovesCache.get(gameID).poll() :
                           null;
-        return move != null ? move : dbService.getLastMove(gameID) ;
     }
 
     @Nullable
     private Move getCurrentMove(UUID gameID){
-        final Move move = gameMovesCache.containsKey(gameID) ?
-                gameMovesCache.get(gameID).getLast() :
-                null;
-        return move != null ? move : dbService.getLastMove(gameID) ;
+        return gameMovesCache.containsKey(gameID) ?
+                          gameMovesCache.get(gameID).getLast() :
+                          null;
     }
 
     private void createMove(
@@ -333,6 +356,10 @@ public class GameService {
         // Получаем разрешенные и выбранные карты и сопоставляем их
         final List<Card> availableCards = getAvailableCards(gameID);
         final List<Card> chosenCards = getChosenCards(gameID);
+        // Опасность исключения NullPointerException оставлена намеренно
+        // Если неполучилось достать карточки для данной игры, то ход завершен с ошибкой
+        // Исключение будет поймано выше и клиенту отправлен Error пакет
+        //noinspection ConstantConditions
         final List<Card> cards = chosenCards.stream().filter(availableCards::contains).collect(Collectors.toList());
         // Предыдущий ход, если он был
         final Move previousMove = getPreviousMove(gameID);
@@ -350,16 +377,11 @@ public class GameService {
         gameMovesCache.get(gameID).offer(move);
 
         // Собираем результаты хода
-        final List<UnitData> units =  move.getUnits()
-                .stream()
-                .map(p ->
-                    new UnitData(
-                            p.getUnitID(),
-                            p.getAssotiatedCardAlias(),
-                            p.getMaxHP(),
-                            p.getCurrentHP(),
-                            new PointData(p.getStartPoint())))
-                .collect(Collectors.toList());
+        final List<UnitData> units = new LinkedList<>();
+        final List<UnitData> attackUnits = new LinkedList<>();
+        final List<UnitData> defenceUnits = new LinkedList<>();
+        separateUnits(move.getUnits(), units, attackUnits, defenceUnits);
+
         final List<ActionData> actions = move.getActions()
                 .stream()
                 .map(p ->
@@ -384,9 +406,14 @@ public class GameService {
         // Запись в базу информации о ходе(следующему пригодится)
         completeMove(gameID, move, units, alive, actions);
         // Возвращаем клиенту все что насчитали
-        final String answer = serializeMoveResult(gameID, move, units, actions);
-        me.send(answer);
-        other.send(answer);
+        if(side == Side.ATTACKER) {
+            me.send(serializeMoveResult(gameID, move, attackUnits, defenceUnits, actions));
+            other.send(serializeMoveResult(gameID, move, defenceUnits, attackUnits, actions));
+        } else {
+            me.send(serializeMoveResult(gameID, move, defenceUnits, attackUnits, actions));
+            other.send(serializeMoveResult(gameID, move, attackUnits, defenceUnits, actions));
+        }
+
     }
 
     private void processRenderComplete(

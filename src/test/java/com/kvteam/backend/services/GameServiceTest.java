@@ -133,7 +133,8 @@ public class GameServiceTest {
         Assert.assertTrue(msg3.getCurrentMove() == 1);
         Assert.assertTrue(msg4.getCurrentMove() == 1);
         Assert.assertEquals(msg3.getActions().size(), msg4.getActions().size());
-        Assert.assertEquals(msg3.getUnits().size(), msg4.getUnits().size());
+        Assert.assertEquals(msg3.getMyUnits().size(), msg4.getEnemyUnits().size());
+        Assert.assertEquals(msg4.getMyUnits().size(), msg3.getEnemyUnits().size());
 
         //noinspection ConstantConditions тут null быть не должно, так что если исключение - надо разбираться
         final RenderCompleteClientData rc1 = new RenderCompleteClientData(connection1.getGameID());

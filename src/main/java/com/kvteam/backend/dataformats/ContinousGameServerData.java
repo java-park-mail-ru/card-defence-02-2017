@@ -14,13 +14,15 @@ public class ContinousGameServerData extends MoveResultGameServerData {
             @NotNull UUID gameID,
             int currentMove,
             int castleHP,
-            List<UnitData> units,
+            List<UnitData> myUnits,
+            List<UnitData> enemyUnits,
             List<ActionData> actions) {
         super(GameServerData.CONTINOUS,
                 gameID,
                 currentMove,
                 castleHP,
-                units,
+                myUnits,
+                enemyUnits,
                 actions);
     }
 }

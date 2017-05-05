@@ -15,7 +15,8 @@ public class GameFinishingServerData extends MoveResultGameServerData {
             int currentMove,
             int castleHP,
             boolean attackerIsWin,
-            List<UnitData> units,
+            List<UnitData> myUnits,
+            List<UnitData> enemyUnits,
             List<ActionData> actions) {
         super(attackerIsWin ?
                 GameServerData.ATTACK_WIN :
@@ -23,7 +24,8 @@ public class GameFinishingServerData extends MoveResultGameServerData {
               gameID,
               currentMove,
               castleHP,
-              units,
+              myUnits,
+              enemyUnits,
               actions);
     }
 }
