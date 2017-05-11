@@ -146,8 +146,8 @@ public class GameService {
 
     private void separateUnits(
             List<Unit> units,
-            List<UnitData> attackUnits,
             List<UnitData> allUnits,
+            List<UnitData> attackUnits,
             List<UnitData> defenceUnits){
         for(Unit unit: units){
             final Side unitSide = unit.getSide();
