@@ -361,7 +361,7 @@ public final class MoveProcessor {
             final double distance = Math.min(distancePerTick, distanceToObstacle);
             unit.incrementOffset(distance);
             context.activeActions.get(unit).setEndOffset(context.time + (int)(distance / distancePerTick * TIME_DELTA));
-            context.activeActions.get(unit).addActionParam("pos", distance);
+            context.activeActions.get(unit).addActionParam("distance", unit.getPositionOffset());
         }
     }
 
