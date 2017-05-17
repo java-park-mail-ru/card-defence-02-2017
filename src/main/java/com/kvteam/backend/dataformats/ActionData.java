@@ -17,7 +17,7 @@ public class ActionData {
     @JsonProperty("unitID")
     private UUID unitID;
     @NotNull
-    @JsonProperty("actiontType")
+    @JsonProperty("actionType")
     private String actionType;
     @NotNull
     @JsonProperty("actionParameters")
