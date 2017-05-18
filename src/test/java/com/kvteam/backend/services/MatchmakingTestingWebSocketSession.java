@@ -1,5 +1,6 @@
 package com.kvteam.backend.services;
 
+import org.jetbrains.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketExtension;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +20,11 @@ import java.util.Map;
  */
 @SuppressWarnings("ALL")
 class MatchmakingTestingWebSocketSession implements WebSocketSession {
+    private Map<String, Object> attrs = new HashMap<>();
+    public MatchmakingTestingWebSocketSession(@Nullable String side) {
+        attrs.put("side", side);
+    }
+
     @Override
     public String getId() {
         return null;
@@ -35,7 +42,7 @@ class MatchmakingTestingWebSocketSession implements WebSocketSession {
 
     @Override
     public Map<String, Object> getAttributes() {
-        return null;
+        return attrs;
     }
 
     @Override

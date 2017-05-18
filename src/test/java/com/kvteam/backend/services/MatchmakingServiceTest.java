@@ -70,9 +70,9 @@ public class MatchmakingServiceTest {
             String side2,
             IPlayerConnection.ConnectionStatus expectStatus){
         final IPlayerConnection connection1 =
-                new PlayerConnection("first_user", new MatchmakingTestingWebSocketSession());
+                new PlayerConnection("first_user", new MatchmakingTestingWebSocketSession(side1));
         final IPlayerConnection connection2 =
-                new PlayerConnection("second_user", new MatchmakingTestingWebSocketSession());
+                new PlayerConnection("second_user", new MatchmakingTestingWebSocketSession(side2));
 
         matchmakingService.addPlayer(connection1, side1);
         matchmakingService.addPlayer(connection2, side2);
@@ -111,7 +111,7 @@ public class MatchmakingServiceTest {
     public void testTwoDefenceAndAll() throws SQLException{
         testTwoPlayers("defence", "defence", IPlayerConnection.ConnectionStatus.MATCHMAKING);
         final IPlayerConnection connection =
-                new PlayerConnection("third", new MatchmakingTestingWebSocketSession());
+                new PlayerConnection("third", new MatchmakingTestingWebSocketSession("all"));
 
         matchmakingService.addPlayer(connection, "all");
 
@@ -122,7 +122,7 @@ public class MatchmakingServiceTest {
     public void testTwoAttackAndAll() throws SQLException{
         testTwoPlayers("attack", "attack", IPlayerConnection.ConnectionStatus.MATCHMAKING);
         final IPlayerConnection connection =
-                new PlayerConnection("third", new MatchmakingTestingWebSocketSession());
+                new PlayerConnection("third", new MatchmakingTestingWebSocketSession("all"));
 
         matchmakingService.addPlayer(connection, "all");
 

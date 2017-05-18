@@ -67,8 +67,8 @@ public class SingleplayerHubServiceTest {
                         any()
                 )
         ).thenReturn(1);
-        final WebSocketSession session = new MatchmakingTestingWebSocketSession();
-        final WebSocketSession session1 = new MatchmakingTestingWebSocketSession();
+        final WebSocketSession session = new MatchmakingTestingWebSocketSession(null);
+        final WebSocketSession session1 = new MatchmakingTestingWebSocketSession(null);
         final IPlayerConnection connection = new PlayerConnection(
                 firstUser, session
 

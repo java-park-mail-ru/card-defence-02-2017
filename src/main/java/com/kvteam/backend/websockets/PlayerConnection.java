@@ -92,6 +92,12 @@ public class PlayerConnection
     }
 
     @Override
+    public String getMatchmakingSide() {
+        final Object obj = session.getAttributes().get(CheckCredentialsWebsocketInterceptor.SIDE_PARAM);
+        return obj != null ? obj.toString() : null;
+    }
+
+    @Override
     public void send(@NotNull String payload) throws IOException {
         session.sendMessage( new TextMessage(payload) );
     }

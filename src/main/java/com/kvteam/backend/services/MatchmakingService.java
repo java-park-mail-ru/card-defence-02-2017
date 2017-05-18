@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -98,13 +98,50 @@ public class MatchmakingService {
             connection.onReceive(null);
             player.onClose(null);
             player.onReceive(null);
-            gameService.startGame(player, connection);
+
+            final Map<String, IPlayerConnection> separated = separateSides(Arrays.asList(player, connection));
+            gameService.startGame(separated.get("attack"), separated.get("defence"));
         } else {
             final Queue<IPlayerConnection> samePlayers = getSamePlayers(side);
             connection.onClose((playerConnection, status) -> samePlayers.remove(playerConnection));
             connection.onReceive(null);
             samePlayers.add(connection);
         }
+    }
+
+    private Map<String, IPlayerConnection> separateSides(List<IPlayerConnection> players) {
+        final Map<String, IPlayerConnection> separated = new HashMap<>();
+        final IPlayerConnection attack = players
+                .stream()
+                .filter(p -> p.getMatchmakingSide() != null
+                        && (p.getMatchmakingSide().equals("attack") || p.getMatchmakingSide().equals("all")))
+                .findFirst()
+                .orElse(null);
+        if(attack != null) {
+            //noinspection ObjectEquality
+            final IPlayerConnection defence =
+                    players.get(0) == attack ?
+                            players.get(1) :
+                            players.get(0);
+            separated.put("attack", attack);
+            separated.put("defence", defence);
+        } else {
+            final IPlayerConnection defence = players
+                    .stream()
+                    .filter(p -> p.getMatchmakingSide() != null
+                            && (p.getMatchmakingSide().equals("defence")))
+                    .findFirst()
+                    .orElse(null);
+
+            //noinspection ObjectEquality
+            final IPlayerConnection other =
+                    players.get(0) == attack ?
+                            players.get(1) :
+                            players.get(0);
+            separated.put("attack", other);
+            separated.put("defence", defence);
+        }
+        return separated;
     }
 
     // Закрытые сокеты - заблудшие души в матчмейкере

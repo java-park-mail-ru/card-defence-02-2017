@@ -32,6 +32,8 @@ public interface IPlayerConnection {
     UUID getGameID();
     @Nullable
     String getUsername();
+    @Nullable
+    String getMatchmakingSide();
     void send(@NotNull String payload) throws IOException;
     void onReceive(@Nullable BiConsumer<IPlayerConnection, String> event);
     void onClose(@Nullable BiConsumer<IPlayerConnection, CloseStatus> event);
