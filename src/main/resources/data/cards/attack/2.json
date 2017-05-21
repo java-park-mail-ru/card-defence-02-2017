@@ -5,6 +5,6 @@
     "maxHP": 10,
     "attack": 5,
     "timeAttack": 300,
-    "range": 0.4,
+    "range": 0.1,
     "velocity": 0.2
 }
