@@ -264,6 +264,7 @@ public class GameService {
                 e.printStackTrace();
             }
         });
+        cardManager.deletePool(gameID);
         currentMoveStates.remove(gameID);
         gameMovesCache.remove(gameID);
         me.markAsCompletion();
@@ -291,11 +292,12 @@ public class GameService {
         // Создаем кэш для новой игры
         gameMovesCache.put(gameID, new ConcurrentLinkedDeque<>());
 
+        cardManager.initPool(gameID);
         // Выделяются карты для выбора
         final List<Card> forAttack = cardManager
-                .getCardsForMove(Side.ATTACKER, 1);
+                .getCardsForMove(gameID, Side.ATTACKER, 1);
         final List<Card> forDefence = cardManager
-                .getCardsForMove(Side.DEFENDER, 1);
+                .getCardsForMove(gameID, Side.DEFENDER, 1);
 
         // Ход записывается в кэши и в базу
         createMove(gameID, forAttack, forDefence);
@@ -446,9 +448,9 @@ public class GameService {
         } else {
             // Продолжаем игру, выделяем карточки для следующего хода
             final List<Card> forAttack = cardManager
-                    .getCardsForMove(Side.ATTACKER, move.getCurrentMove() + 1);
+                    .getCardsForMove(gameID, Side.ATTACKER, move.getCurrentMove() + 1);
             final List<Card> forDefence = cardManager
-                    .getCardsForMove(Side.DEFENDER, move.getCurrentMove() + 1);
+                    .getCardsForMove(gameID, Side.DEFENDER, move.getCurrentMove() + 1);
             createMove(gameID, forAttack, forDefence);
 
             final List<CardData> forAttackCardData =
@@ -524,6 +526,9 @@ public class GameService {
         try {
             final UUID gameID = other.getGameID();
             other.close();
+            if (gameID != null) {
+                cardManager.deletePool(gameID);
+            }
             chosenCardsCache.remove(gameID);
             availableCardsCache.remove(gameID);
             currentMoveStates.remove(gameID);
@@ -570,6 +575,7 @@ public class GameService {
         other.onClose(null);
         me.onReceive(null);
         other.onReceive(null);
+        cardManager.deletePool(gameID);
         chosenCardsCache.remove(gameID);
         availableCardsCache.remove(gameID);
         currentMoveStates.remove(gameID);

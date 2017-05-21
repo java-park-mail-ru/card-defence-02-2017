@@ -1,10 +1,10 @@
 {
     "type": "com.kvteam.backend.gameplay.Card",
-    "alias": "c",
+    "alias": "e",
     "side": "DEFENDER",
-    "maxHP": 1,
-    "attack": 1,
+    "maxHP": 10,
+    "attack": 5,
     "timeAttack": 300,
-    "range": 0.2,
+    "range": 0.3,
     "velocity": 0
 }

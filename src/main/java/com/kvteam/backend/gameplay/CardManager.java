@@ -21,12 +21,14 @@ public class CardManager {
     private Random rand;
     // Потом должно заполняться из файла
     private Map<String, Card> cards;
+    private Map<UUID, List<Card>> pools;
     @Autowired
     private ResourceFactory resourceFactory;
 
     public CardManager(){
         this.rand = new Random();
         this.cards = new HashMap<>();
+        this.pools = new HashMap<>();
     }
 
     @PostConstruct
@@ -39,11 +41,19 @@ public class CardManager {
         }
     }
 
+    public void initPool(@NotNull UUID gameID) {
+        pools.put(gameID, cards.values().stream().collect(Collectors.toList()));
+    }
+
+    public void deletePool(@NotNull UUID gameID) {
+        pools.remove(gameID);
+    }
+
     public List<Card> getCardsForMove(
+            @NotNull UUID gameID,
             @NotNull Side side,
             int moveCount){
-        final List<Card> onlySelectedSide = cards
-                                        .values()
+        final List<Card> onlySelectedSide = pools.get(gameID)
                                         .stream()
                                         .filter( p -> p.getSide() == side)
                                         .collect(Collectors.toList());
