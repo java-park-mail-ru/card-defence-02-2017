@@ -59,10 +59,12 @@ public class CardManager {
                                         .collect(Collectors.toList());
         Collections.shuffle(onlySelectedSide);
         final int numberOfCardsForMove = Math.min(moveCount, 4);
-        return onlySelectedSide
+        final List<Card> cardsForMove = onlySelectedSide
                 .stream()
                 .limit(numberOfCardsForMove)
                 .collect(Collectors.toList());
+        pools.get(gameID).removeAll(cardsForMove);
+        return cardsForMove;
     }
 
     @Nullable

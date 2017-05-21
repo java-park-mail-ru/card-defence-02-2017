@@ -459,7 +459,7 @@ public class GameService {
                     new CardsForNextMoveGameServerData(gameID, forAttackCardData);
 
             final List<CardData> forDefenceCardData =
-                    forAttack.stream().map(p -> new CardData(p.getAlias())).collect(Collectors.toList());
+                    forDefence.stream().map(p -> new CardData(p.getAlias())).collect(Collectors.toList());
             final CardsForNextMoveGameServerData cardDefenceData =
                     new CardsForNextMoveGameServerData(gameID, forDefenceCardData);
 
