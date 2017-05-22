@@ -325,8 +325,7 @@ public class GameService {
         defender.send(mapper.writeValueAsString(startDataDefence));
         attacker.markAsPlaying(gameID);
         defender.markAsPlaying(gameID);
-        System.out.println(attacker.getConnectionStatus().toString());
-        System.out.println(defender.getConnectionStatus().toString());
+        System.out.println("Match start: " + attacker.getUsername() + " vs " + defender.getUsername());
     }
 
     private void processChatMessage(
@@ -497,9 +496,10 @@ public class GameService {
             throw new NullPointerException();
         }
         try {
-
-            System.out.println(me.getConnectionStatus().toString());
-            System.out.println(other.getConnectionStatus().toString());
+            if(me.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING
+                    || other.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING) {
+                throw new InvalidPlayerConnectionStateException();
+            }
 
             final GameClientData baseData = mapper.readValue(message, GameClientData.class);
             if(baseData.getStatus().equals(GameClientData.SEND_CHAT_MESSAGE)){
