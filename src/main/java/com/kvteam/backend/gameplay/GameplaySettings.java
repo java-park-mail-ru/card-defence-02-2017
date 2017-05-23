@@ -13,13 +13,13 @@ import javax.annotation.PostConstruct;
  */
 @SuppressWarnings("SpringAutowiredFieldsWarningInspection")
 @Component
-@DependsOn("ResourceFactory")
 public class GameplaySettings {
     private int maxMovesCount;
     private int maxCastleHP;
     private double castleRange;
     private int castleAttack;
     private int castleTimeAttack;
+    private int readyStateTimeout;
     @Autowired
     private ResourceFactory resourceFactory;
 
@@ -45,6 +45,9 @@ public class GameplaySettings {
         castleTimeAttack = res.anyGet("castleTimeAttack") != null ?
                            (int)res.anyGet("castleTimeAttack") :
                            1;
+        readyStateTimeout = res.anyGet("readyStateTimeout") != null ?
+                (int)res.anyGet("readyStateTimeout") :
+                -1;
     }
 
     public int getMaxMovesCount(){
@@ -65,5 +68,9 @@ public class GameplaySettings {
 
     public int getCastleTimeAttack(){
         return castleTimeAttack;
+    }
+
+    public int getReadyStateTimeout(){
+        return readyStateTimeout;
     }
 }

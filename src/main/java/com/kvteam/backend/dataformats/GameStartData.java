@@ -21,6 +21,8 @@ public class GameStartData extends CardsForNextMoveGameServerData {
     private int movesCount;
     @JsonProperty("castleMaxHP")
     private int castleMaxHP;
+    @JsonProperty("timeout")
+    private int timeout;
 
     @JsonCreator
     public GameStartData(
@@ -29,11 +31,13 @@ public class GameStartData extends CardsForNextMoveGameServerData {
             @JsonProperty("side") @NotNull String side,
             @JsonProperty("movesCount") int movesCount,
             @JsonProperty("castleMaxHP") int castleMaxHP,
+            @JsonProperty("timeout") int timeout,
             @JsonProperty("allowedCards") List<CardData> allowedCards){
         super(GameServerData.START, gameID, allowedCards);
         this.side = side;
         this.enemyUsername = enemyUsername;
         this.movesCount = movesCount;
         this.castleMaxHP = castleMaxHP;
+        this.timeout = timeout;
     }
 }

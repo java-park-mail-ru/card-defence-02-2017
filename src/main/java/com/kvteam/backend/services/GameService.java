@@ -3,7 +3,6 @@ package com.kvteam.backend.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kvteam.backend.dataformats.*;
-import com.kvteam.backend.exceptions.InvalidPlayerConnectionStateException;
 import com.kvteam.backend.exceptions.MoveProcessorException;
 import com.kvteam.backend.gameplay.*;
 import com.kvteam.backend.websockets.IPlayerConnection;
@@ -16,10 +15,7 @@ import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +28,7 @@ public class GameService {
     private GameDbService dbService;
     private CardManager cardManager;
     private GameplaySettings gameplaySettings;
+    private TimeoutService timeoutService;
 
     private ExecutorService dbExecutorService;
     @Value("db_thread_count")
@@ -46,17 +43,19 @@ public class GameService {
             ObjectMapper mapper,
             GameDbService dbService,
             CardManager cardManager,
-            GameplaySettings gameplaySettings){
+            GameplaySettings gameplaySettings,
+            TimeoutService timeoutService){
         this.mapper = mapper;
         this.dbService = dbService;
         this.cardManager = cardManager;
         this.gameplaySettings = gameplaySettings;
+        this.timeoutService = timeoutService;
 
         try{
             final int dbThreadCount = Integer.parseInt(dbThreadCountStr);
-            if(dbThreadCount <= 0){
+            if (dbThreadCount <= 0) {
                 dbExecutorService = Executors.newCachedThreadPool();
-            } else if(dbThreadCount == 1){
+            } else if(dbThreadCount == 1) {
                 dbExecutorService = Executors.newSingleThreadExecutor();
             } else {
                 dbExecutorService = Executors.newFixedThreadPool(dbThreadCount);
@@ -64,6 +63,8 @@ public class GameService {
         } catch(NumberFormatException e){
             dbExecutorService = Executors.newCachedThreadPool();
         }
+
+        timeoutService.setTimeoutCallback(this::onTimeout);
 
         gameMovesCache = new ConcurrentHashMap<>();
         currentMoveStates = new ConcurrentHashMap<>();
@@ -76,7 +77,45 @@ public class GameService {
         dbExecutorService.shutdown();
     }
 
-    private synchronized boolean setChosenCards(
+    private void onTimeout(IPlayerConnection attacker, IPlayerConnection defender) {
+        // Локи уже стоят
+        attacker.markAsCompletion();
+        defender.markAsCompletion();
+        final boolean attackerIsReady =
+                currentMoveStates.get(attacker.getGameID()).getAttackReady();
+        final boolean defenderIsReady =
+                currentMoveStates.get(defender.getGameID()).getDefenceReady();
+        final String timeoutFor =
+                (attackerIsReady ? "" : attacker.getUsername() + ' ')
+                + (defenderIsReady ? "" : defender.getUsername());
+        final String winner;
+        if(attackerIsReady) {
+            winner = "attacker";
+        } else if(defenderIsReady) {
+            winner = "defender";
+        } else {
+            winner = "none";
+        }
+        //noinspection OverlyBroadCatchBlock
+        try {
+            //noinspection ConstantConditions
+            final String msg = mapper.writeValueAsString(
+                            new TimeoutServerData(attacker.getGameID(), timeoutFor, winner));
+            attacker.send(msg);
+            defender.send(msg);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            attacker.close();
+            defender.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean setChosenCards(
             UUID gameID,
             Side side,
             List<PositionedCardData> cards) throws JsonProcessingException{
@@ -100,7 +139,7 @@ public class GameService {
         return currentMoveStates.get(gameID).isBothReady();
     }
 
-    private synchronized boolean setRenderComplete(
+    private boolean setRenderComplete(
             UUID gameID,
             Side side){
         if(side == Side.ATTACKER) {
@@ -313,6 +352,7 @@ public class GameService {
                 "attack",
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP(),
+                gameplaySettings.getReadyStateTimeout(),
                 forAttackCardData);
         final GameStartData startDataDefence = new GameStartData(
                 gameID,
@@ -320,12 +360,13 @@ public class GameService {
                 "defence",
                 gameplaySettings.getMaxMovesCount(),
                 gameplaySettings.getMaxCastleHP(),
+                gameplaySettings.getReadyStateTimeout(),
                 forDefenceCardData);
         attacker.send(mapper.writeValueAsString(startDataAttack));
         defender.send(mapper.writeValueAsString(startDataDefence));
         attacker.markAsPlaying(gameID);
         defender.markAsPlaying(gameID);
-        System.out.println("Match start: " + attacker.getUsername() + " vs " + defender.getUsername());
+        timeoutService.tryAddToTimeouts(attacker, defender);
     }
 
     private void processChatMessage(
@@ -354,6 +395,9 @@ public class GameService {
         if(!setChosenCards(gameID, side, clientData.getCards())){
             return;
         }
+        timeoutService.tryRemoveFromTimeouts(
+                side == Side.ATTACKER ? me : other,
+                side == Side.ATTACKER ? other : me);
 
         // А вот тут уже интересно. Считаем ход
         // Получаем разрешенные и выбранные карты и сопоставляем их
@@ -467,9 +511,11 @@ public class GameService {
             if(side == Side.ATTACKER){
                 me.send(mapper.writeValueAsString(cardAttackData));
                 other.send(mapper.writeValueAsString(cardDefenceData));
+                timeoutService.tryAddToTimeouts(me, other);
             } else {
                 other.send(mapper.writeValueAsString(cardAttackData));
                 me.send(mapper.writeValueAsString(cardDefenceData));
+                timeoutService.tryAddToTimeouts(other, me);
             }
         }
     }
@@ -496,9 +542,12 @@ public class GameService {
             throw new NullPointerException();
         }
         try {
+            me.getSemaphore().acquire();
+            other.getSemaphore().acquire();
+
             if(me.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING
                     || other.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING) {
-                throw new InvalidPlayerConnectionStateException();
+                return;
             }
 
             final GameClientData baseData = mapper.readValue(message, GameClientData.class);
@@ -518,6 +567,9 @@ public class GameService {
 
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") Exception e) {
             criticalExceptionRaised(e, me, other);
+        } finally {
+            me.getSemaphore().release();
+            other.getSemaphore().release();
         }
     }
 
@@ -525,6 +577,8 @@ public class GameService {
             @SuppressWarnings("unused") IPlayerConnection me,
             IPlayerConnection other){
         try {
+            me.getSemaphore().acquire();
+            other.getSemaphore().acquire();
             final UUID gameID = other.getGameID();
             other.close();
             if (gameID != null) {
@@ -534,15 +588,21 @@ public class GameService {
             availableCardsCache.remove(gameID);
             currentMoveStates.remove(gameID);
             gameMovesCache.remove(gameID);
-        } catch(IOException e) {
+        } catch(IOException
+                | InterruptedException e) {
             e.printStackTrace();
+        } finally {
+            me.getSemaphore().release();
+            other.getSemaphore().release();
         }
     }
 
     public void startGame(IPlayerConnection attacker, IPlayerConnection defender){
         try {
-            startMatch(attacker, defender);
+            attacker.getSemaphore().acquire();
+            defender.getSemaphore().acquire();
 
+            startMatch(attacker, defender);
             // При получении информации с клиента будет вызываться receive,
             // Причем, за счет замыканий, в методе будут доступны оба игрока
             attacker.onReceive((conn, str) -> receive(conn, defender, Side.ATTACKER, str));
@@ -551,8 +611,12 @@ public class GameService {
             defender.onClose((conn, status) -> close(conn, attacker));
         } catch (IOException
                 | NullPointerException
-                | SQLException e) {
+                | SQLException
+                | InterruptedException e) {
             criticalExceptionRaised(e, attacker, defender);
+        } finally {
+            attacker.getSemaphore().release();
+            defender.getSemaphore().release();
         }
     }
 

@@ -6,6 +6,7 @@ import org.springframework.web.socket.CloseStatus;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
 import java.util.function.BiConsumer;
 
 /**
@@ -20,6 +21,9 @@ public interface IPlayerConnection {
         COMPLETION,
         ERRORABLE
     }
+
+    @NotNull
+    Semaphore getSemaphore();
 
     @NotNull
     ConnectionStatus getConnectionStatus();
