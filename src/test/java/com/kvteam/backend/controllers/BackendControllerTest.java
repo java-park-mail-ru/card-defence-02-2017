@@ -193,7 +193,7 @@ public class BackendControllerTest {
 
 
     @Test
-    public void loginAccesDenied(){
+    public void loginAccessDenied(){
         final String username = getUniqueUsername();
         login("user_not_exists", "321", HttpStatus.FORBIDDEN);
         final ResponseEntity<ResponseStatusData> answer = register(username, "123", HttpStatus.OK);

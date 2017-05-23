@@ -1,0 +1,7 @@
+{
+    "maxCastleHP": 3,
+    "maxMovesCount": 2,
+    "castleRange": 0.1,
+    "castleAttack": 1,
+    "castleTimeAttack": 500
+}

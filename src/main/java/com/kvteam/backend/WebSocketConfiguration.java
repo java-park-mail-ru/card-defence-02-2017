@@ -13,7 +13,10 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -25,55 +28,32 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import javax.sql.DataSource;
 
 /**
- * Created by maxim on 19.03.17.
+ * Created by maxim on 18.04.17.
  */
-@SuppressWarnings({"SpringAutowiredFieldsWarningInspection", "SpringFacetCodeInspection"})
 @Configuration
+@EnableWebSocket
 @EnableAutoConfiguration
 @ComponentScan
-public class AppConfiguration {
+public class WebSocketConfiguration implements WebSocketConfigurer {
     @Value("${origin}")
     private String origin;
+    @Autowired
+    private GameWebSocketHandler webSocketHandler;
+    @Autowired
+    private AccountService accountService;
+
+
     @Bean
-    public FilterRegistrationBean corsFilter() {
-        final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        final CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true);
-        config.addAllowedOrigin(origin);
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        source.registerCorsConfiguration("/**", config);
-        final FilterRegistrationBean bean = new FilterRegistrationBean(new CorsFilter(source));
-        bean.setOrder(0);
-        return bean;
+    public CheckCredentialsWebsocketInterceptor credentialsWebsocketInterceptor() {
+        return new CheckCredentialsWebsocketInterceptor(accountService);
     }
 
-
-    @Bean
-    @Primary
-    @ConfigurationProperties(prefix = "spring.datasource")
-    public DataSource dataSource() {
-        return DataSourceBuilder.create().build();
-    }
-
-    @Bean
-    public ObjectMapper objectMapper(){
-        return new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    }
-
-    @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder(){
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public CardManager cardManager(){
-        return new CardManager();
-    }
-
-    @Bean
-    public GameplaySettings gameplaySettings(){
-        return new GameplaySettings();
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry
+                .addHandler(webSocketHandler, "/connect")
+                .addInterceptors(credentialsWebsocketInterceptor())
+                .setAllowedOrigins(origin);
     }
 
 }
