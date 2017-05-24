@@ -138,21 +138,26 @@ public class TimeoutService {
             semaphore.release();
         }
         if(!callClose.isEmpty()) {
-            callClose.forEach(p -> {
-                try{
-                    // Если хотя бы один захвачен,
-                    // значит они в обработке и таймаут не актуален
-                    if(p.getAttacker().getSemaphore().tryAcquire()
-                            && p.getDefender().getSemaphore().tryAcquire() ) {
-                        timeoutCallback.accept(p.getAttacker(), p.getDefender());
-                    }
-                } finally {
-                    p.getAttacker().getSemaphore().release();
-                    p.getDefender().getSemaphore().release();
-                }
-            });
+            callClose.forEach(this::callTimeouts);
         }
+    }
 
+    private void callTimeouts(TimeoutConnectionPair p) {
+        // Если хотя бы один захвачен,
+        // значит они в обработке и таймаут не актуален
+        if(p.getAttacker().getSemaphore().tryAcquire()) {
+            try {
+                if( p.getDefender().getSemaphore().tryAcquire() ) {
+                    try {
+                        timeoutCallback.accept(p.getAttacker(), p.getDefender());
+                    } finally {
+                        p.getDefender().getSemaphore().release();
+                    }
+                }
+            } finally {
+                p.getAttacker().getSemaphore().release();
+            }
+        }
     }
 
     private void deleteIfNeeded() {
