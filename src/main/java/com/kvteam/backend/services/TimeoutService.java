@@ -5,12 +5,9 @@ import com.kvteam.backend.websockets.IPlayerConnection;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.io.IOException;
 import java.util.LinkedList;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by maxim on 23.05.17.
@@ -38,9 +35,15 @@ public class TimeoutService {
             return timeout;
         }
 
+        @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
         @Override
         public boolean equals(Object o) {
             return (attacker.toString() + defender.toString()).equals(o.toString());
+        }
+
+        @Override
+        public int hashCode() {
+            return (attacker.toString() + defender.toString()).hashCode();
         }
     }
 
@@ -164,6 +167,9 @@ public class TimeoutService {
         try {
             // Семафор на таймаутс уже должен стоять
             deleteSemaphore.acquire();
+            // Для корректной работы этой строчки специально
+            // переопределен equals в TimeoutConnectionPair
+            //noinspection SuspiciousMethodCalls
             timeouts.removeAll(toDelete);
         } catch (InterruptedException e) {
             e.printStackTrace();
