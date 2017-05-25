@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * Created by maxim on 26.03.17.
  */
-@SuppressWarnings("OverlyBroadThrowsClause")
+@SuppressWarnings({"OverlyBroadThrowsClause", "Duplicates"})
 @Service
 public class GameService {
     private ObjectMapper mapper;
@@ -75,6 +75,30 @@ public class GameService {
     @PreDestroy
     private void joinThreads(){
         dbExecutorService.shutdown();
+    }
+
+    private void acquireMeAndOther(IPlayerConnection me,
+                                   IPlayerConnection other,
+                                   Side side) throws InterruptedException {
+        if(side == Side.ATTACKER) {
+            me.getSemaphore().acquire();
+            other.getSemaphore().acquire();
+        } else {
+            other.getSemaphore().acquire();
+            me.getSemaphore().acquire();
+        }
+    }
+
+    private void releaseMeAndOther(IPlayerConnection me,
+                                   IPlayerConnection other,
+                                   Side side) {
+        if(side == Side.ATTACKER) {
+            me.getSemaphore().release();
+            other.getSemaphore().release();
+        } else {
+            other.getSemaphore().release();
+            me.getSemaphore().release();
+        }
     }
 
     private void onTimeout(IPlayerConnection attacker, IPlayerConnection defender) {
@@ -542,8 +566,7 @@ public class GameService {
             throw new NullPointerException();
         }
         try {
-            me.getSemaphore().acquire();
-            other.getSemaphore().acquire();
+            acquireMeAndOther(me, other, side);
 
             if(me.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING
                     || other.getConnectionStatus() != IPlayerConnection.ConnectionStatus.PLAYING) {
@@ -568,17 +591,16 @@ public class GameService {
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") Exception e) {
             criticalExceptionRaised(e, me, other);
         } finally {
-            me.getSemaphore().release();
-            other.getSemaphore().release();
+            releaseMeAndOther(me, other, side);
         }
     }
 
     private void close(
             @SuppressWarnings("unused") IPlayerConnection me,
-            IPlayerConnection other){
+            IPlayerConnection other,
+            Side side){
         try {
-            me.getSemaphore().acquire();
-            other.getSemaphore().acquire();
+            acquireMeAndOther(me, other, side);
             final UUID gameID = other.getGameID();
             other.close();
             if (gameID != null) {
@@ -592,8 +614,7 @@ public class GameService {
                 | InterruptedException e) {
             e.printStackTrace();
         } finally {
-            me.getSemaphore().release();
-            other.getSemaphore().release();
+            releaseMeAndOther(me, other, side);
         }
     }
 
@@ -607,8 +628,8 @@ public class GameService {
             // Причем, за счет замыканий, в методе будут доступны оба игрока
             attacker.onReceive((conn, str) -> receive(conn, defender, Side.ATTACKER, str));
             defender.onReceive((conn, str) -> receive(conn, attacker, Side.DEFENDER, str));
-            attacker.onClose((conn, status) -> close(conn, defender));
-            defender.onClose((conn, status) -> close(conn, attacker));
+            attacker.onClose((conn, status) -> close(conn, defender, Side.ATTACKER));
+            defender.onClose((conn, status) -> close(conn, attacker, Side.DEFENDER));
         } catch (IOException
                 | NullPointerException
                 | SQLException
