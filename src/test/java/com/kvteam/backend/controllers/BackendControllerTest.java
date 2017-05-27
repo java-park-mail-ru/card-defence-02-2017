@@ -45,8 +45,7 @@ public class BackendControllerTest {
                         username,
                         passwd,
                         username + "@mail.ru",
-                        0,
-                        1
+                        0
                 ),
                 ResponseStatusData.class
         );
@@ -71,8 +70,7 @@ public class BackendControllerTest {
             return new UserData(
                     (user.getBody()).get("username").toString(),
                     (user.getBody()).get("email").toString(),
-                    0,
-                    1);
+                    0);
         }
         return null;
     }
@@ -90,8 +88,7 @@ public class BackendControllerTest {
                         null,
                         password,
                         email,
-                        null,
-                        null
+                        0
                 ),
                 requestHeaders);
         final ResponseEntity<ResponseStatusData> answer =
@@ -109,9 +106,7 @@ public class BackendControllerTest {
                 new UserData(
                         username,
                         password,
-                        null,
-                        null,
-                        null
+                        0
                 ),
                 ResponseStatusData.class
         );

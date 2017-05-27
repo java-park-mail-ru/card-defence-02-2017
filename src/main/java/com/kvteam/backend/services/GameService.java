@@ -103,28 +103,34 @@ public class GameService {
 
     private void onTimeout(IPlayerConnection attacker, IPlayerConnection defender) {
         // Локи уже стоят
-        attacker.markAsCompletion();
-        defender.markAsCompletion();
+        final UUID gameID = attacker.getGameID();
+        if(gameID == null || !currentMoveStates.containsKey(gameID)) {
+            return;
+        }
         final boolean attackerIsReady =
-                currentMoveStates.get(attacker.getGameID()).getAttackReady();
+                currentMoveStates.get(gameID).getAttackReady();
         final boolean defenderIsReady =
-                currentMoveStates.get(defender.getGameID()).getDefenceReady();
+                currentMoveStates.get(gameID).getDefenceReady();
         final String timeoutFor =
                 (attackerIsReady ? "" : attacker.getUsername() + ' ')
                 + (defenderIsReady ? "" : defender.getUsername());
         final String winner;
+        final GameDbService.WinnerType winnerType;
         if(attackerIsReady) {
             winner = "attacker";
+            winnerType = GameDbService.WinnerType.ATTACKER;
         } else if(defenderIsReady) {
             winner = "defender";
+            winnerType = GameDbService.WinnerType.DEFENDER;
         } else {
             winner = "none";
+            winnerType = GameDbService.WinnerType.NONE;
         }
         //noinspection OverlyBroadCatchBlock
         try {
             //noinspection ConstantConditions
             final String msg = mapper.writeValueAsString(
-                            new TimeoutServerData(attacker.getGameID(), timeoutFor, winner));
+                            new TimeoutServerData(gameID, timeoutFor, winner));
             attacker.send(msg);
             defender.send(msg);
         } catch (IOException e) {
@@ -132,9 +138,11 @@ public class GameService {
         }
 
         try {
-            attacker.close();
-            defender.close();
-        } catch (IOException e) {
+            completeMatch(gameID,
+                    winnerType,
+                    attacker,
+                    defender );
+        } catch (RuntimeException | IOException e) {
             e.printStackTrace();
         }
     }
@@ -323,6 +331,7 @@ public class GameService {
         dbExecutorService.execute(() -> {
             try{
                 dbService.completeMatch(gameID, winner);
+                dbService.updateRating(gameID);
             }catch(SQLException e){
                 e.printStackTrace();
             }

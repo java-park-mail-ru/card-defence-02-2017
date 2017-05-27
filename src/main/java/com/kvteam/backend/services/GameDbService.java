@@ -5,9 +5,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Created by maxim on 02.04.17.
@@ -28,6 +26,7 @@ public class GameDbService {
             "set \n" +
             "  winner =\n" +
             "        case when :winner = 'attacker' then attacker\n" +
+            "             when :winner = 'defender' then defender\n" +
             "             else defender\n" +
             "        end,\n" +
             "  end_time = now()\n" +
@@ -123,9 +122,19 @@ public class GameDbService {
             "  actions = :actions\n" +
             "where ID = :matchID and move_number = :moveNumber;";
 
+    private static final String SQL_GET_MATCH_PLAYERS =
+            "select\n" +
+            "   winner\n" +
+            "from matches\n" +
+            "where ID = :matchID;";
+
+    private static final String SQL_UPDATE_RATING =
+            "update users set rating = rating + 1 where id = :winner;";
+
     enum WinnerType{
         ATTACKER,
-        DEFENDER
+        DEFENDER,
+        NONE
     }
 
     private NamedParameterJdbcTemplate template;
@@ -159,12 +168,36 @@ public class GameDbService {
             @NotNull WinnerType winner)
                 throws SQLException{
         final Map<String, Object> params = new HashMap<>();
-        params.put("winner",  winner == WinnerType.ATTACKER ? "attacker" : "defender");
+        if (winner == WinnerType.ATTACKER) {
+            params.put("winner", "attacker");
+        } else if (winner == WinnerType.DEFENDER) {
+            params.put("winner", "attacker");
+        } else {
+            params.put("winner", null);
+        }
         params.put("matchID", matchID);
         template.update(
                 SQL_COMPLETE_MATCH,
                 params
         );
+    }
+
+    public void updateRating(@NotNull UUID matchID) {
+        final Map<String, Object> params = new HashMap<>();
+        params.put("matchID", matchID);
+        final UUID winner = template.queryForObject(
+                SQL_GET_MATCH_PLAYERS,
+                params,
+                UUID.class);
+
+        if(winner != null){
+            params.clear();
+            params.put("winner", winner);
+            template.update(
+                    SQL_UPDATE_RATING,
+                    params
+            );
+        }
     }
 
     /**

@@ -135,7 +135,7 @@ public class TimeoutService {
                 }while(!timeouts.isEmpty() && !(pair = timeouts.poll()).equals(firstPair));
             }
 
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | RuntimeException e) {
             e.printStackTrace();
         } finally {
             semaphore.release();
@@ -153,6 +153,8 @@ public class TimeoutService {
                 if( p.getDefender().getSemaphore().tryAcquire() ) {
                     try {
                         timeoutCallback.accept(p.getAttacker(), p.getDefender());
+                    } catch (RuntimeException e) {
+                        e.printStackTrace();
                     } finally {
                         p.getDefender().getSemaphore().release();
                     }
