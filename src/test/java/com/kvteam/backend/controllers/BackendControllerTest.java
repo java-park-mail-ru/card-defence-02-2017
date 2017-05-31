@@ -105,8 +105,7 @@ public class BackendControllerTest {
                 "/api/login",
                 new UserData(
                         username,
-                        password,
-                        0
+                        password
                 ),
                 ResponseStatusData.class
         );

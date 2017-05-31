@@ -30,6 +30,13 @@ public class UserData {
         this.rating = rating;
     }
 
+    public UserData(
+            @Nullable String username,
+            @Nullable String password) {
+        this.username = username;
+        this.password = password;
+    }
+
     /**
      * Объект с общедоступной информацией
      */
