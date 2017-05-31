@@ -24,6 +24,21 @@ import java.util.stream.Collectors;
 @SuppressWarnings({"OverlyBroadThrowsClause", "Duplicates"})
 @Service
 public class GameService {
+    @SuppressWarnings("PublicField")
+    private static class MatchContext {
+        @SuppressWarnings("InnerClassTooDeeplyNested")
+        enum State {
+            RENDERING,
+            CHOSING_CARDS,
+        }
+
+        public ConcurrentLinkedDeque<Move> gameMovesCache = new ConcurrentLinkedDeque<>();
+        public MovePlayersReadyState readyState = new MovePlayersReadyState();
+        public List<Card> availableCardsCache;
+        public List<Card> chosenCardsCache;
+        public State state;
+    }
+
     private ObjectMapper mapper;
     private GameDbService dbService;
     private CardManager cardManager;
@@ -34,10 +49,7 @@ public class GameService {
     @Value("db_thread_count")
     private String dbThreadCountStr;
 
-    private Map<UUID, ConcurrentLinkedDeque<Move>> gameMovesCache;
-    private Map<UUID, MovePlayersReadyState> currentMoveStates;
-    private Map<UUID, List<Card>> availableCardsCache;
-    private Map<UUID, List<Card>> chosenCardsCache;
+    private Map<UUID, MatchContext> matchContexts;
 
     public GameService(
             ObjectMapper mapper,
@@ -66,10 +78,7 @@ public class GameService {
 
         timeoutService.setTimeoutCallback(this::onTimeout);
 
-        gameMovesCache = new ConcurrentHashMap<>();
-        currentMoveStates = new ConcurrentHashMap<>();
-        availableCardsCache = new ConcurrentHashMap<>();
-        chosenCardsCache = new ConcurrentHashMap<>();
+        matchContexts = new ConcurrentHashMap<>();
     }
 
     @PreDestroy
@@ -104,13 +113,13 @@ public class GameService {
     private void onTimeout(IPlayerConnection attacker, IPlayerConnection defender) {
         // Локи уже стоят
         final UUID gameID = attacker.getGameID();
-        if(gameID == null || !currentMoveStates.containsKey(gameID)) {
+        if(gameID == null || !matchContexts.containsKey(gameID)) {
             return;
         }
         final boolean attackerIsReady =
-                currentMoveStates.get(gameID).getAttackReady();
+                matchContexts.get(gameID).readyState.getAttackReady();
         final boolean defenderIsReady =
-                currentMoveStates.get(gameID).getDefenceReady();
+                matchContexts.get(gameID).readyState.getDefenceReady();
         final String timeoutFor =
                 (attackerIsReady ? "" : attacker.getUsername() + ' ')
                 + (defenderIsReady ? "" : defender.getUsername());
@@ -154,21 +163,21 @@ public class GameService {
         final String serialized = mapper.writeValueAsString(cards);
         if(side == Side.ATTACKER) {
             dbExecutorService.execute(() -> dbService.setChosenAttackerCards(gameID, serialized));
-            currentMoveStates.get(gameID).setAttackReady();
+            matchContexts.get(gameID).readyState.setAttackReady();
         } else {
             dbExecutorService.execute(() -> dbService.setChosenDefenderCards(gameID, serialized));
-            currentMoveStates.get(gameID).setDefenceReady();
+            matchContexts.get(gameID).readyState.setDefenceReady();
         }
         final List<Card> forCache = cards
                 .stream()
                 .map(p -> cardManager.getCard(p.getAlias(), p.getPointData().toPoint()))
                 .collect(Collectors.toList());
-        if(chosenCardsCache.get(gameID) == null){
-            chosenCardsCache.put(gameID, forCache);
+        if(matchContexts.get(gameID).chosenCardsCache == null){
+            matchContexts.get(gameID).chosenCardsCache = forCache;
         } else {
-            chosenCardsCache.get(gameID).addAll(forCache);
+            matchContexts.get(gameID).chosenCardsCache.addAll(forCache);
         }
-        return currentMoveStates.get(gameID).isBothReady();
+        return matchContexts.get(gameID).readyState.isBothReady();
     }
 
     private boolean setRenderComplete(
@@ -176,12 +185,12 @@ public class GameService {
             Side side){
         if(side == Side.ATTACKER) {
             dbExecutorService.execute(() -> dbService.setDefenderRenderComplete(gameID));
-            currentMoveStates.get(gameID).setAttackRenderComplete();
+            matchContexts.get(gameID).readyState.setAttackRenderComplete();
         } else {
             dbExecutorService.execute(() -> dbService.setAttackerRenderComplete(gameID));
-            currentMoveStates.get(gameID).setDefenceRenderComplete();
+            matchContexts.get(gameID).readyState.setDefenceRenderComplete();
         }
-        return currentMoveStates.get(gameID).isBothRenderComplete();
+        return matchContexts.get(gameID).readyState.isBothRenderComplete();
     }
 
     private String serializeMoveResult(
@@ -239,46 +248,46 @@ public class GameService {
 
     @Nullable
     private List<Card> getAvailableCards(UUID gameID){
-        if(availableCardsCache.containsKey(gameID)
-                && availableCardsCache.get(gameID) != null){
-            return availableCardsCache.get(gameID);
+        if(matchContexts.containsKey(gameID)
+                && matchContexts.get(gameID).availableCardsCache != null){
+            return matchContexts.get(gameID).availableCardsCache;
         }
         return null;
     }
 
     @Nullable
     private List<Card> getChosenCards(UUID gameID){
-        if(chosenCardsCache.containsKey(gameID)
-                && chosenCardsCache.get(gameID) != null){
-            return chosenCardsCache.get(gameID);
+        if(matchContexts.containsKey(gameID)
+                && matchContexts.get(gameID).chosenCardsCache != null){
+            return matchContexts.get(gameID).chosenCardsCache;
         }
         return null;
     }
 
     @Nullable
     private Move getPreviousMove(UUID gameID){
-        return gameMovesCache.containsKey(gameID) ?
-                          gameMovesCache.get(gameID).poll() :
-                          null;
+        return matchContexts.containsKey(gameID) ?
+                matchContexts.get(gameID).gameMovesCache.poll() :
+                null;
     }
 
     @Nullable
     private Move getCurrentMove(UUID gameID){
-        return gameMovesCache.containsKey(gameID) ?
-                          gameMovesCache.get(gameID).getLast() :
-                          null;
+        return matchContexts.containsKey(gameID) ?
+                matchContexts.get(gameID).gameMovesCache.getLast() :
+                null;
     }
 
     private void createMove(
             UUID gameID,
             List<Card> forAttack,
             List<Card> forDefence){
-        currentMoveStates.put(gameID, new MovePlayersReadyState());
+        matchContexts.get(gameID).readyState =  new MovePlayersReadyState();
         // Запоминаются выданные карты в кэше
         final List<Card> availableCards = new ArrayList<>();
         availableCards.addAll(forAttack);
         availableCards.addAll(forDefence);
-        availableCardsCache.put(gameID, availableCards);
+        matchContexts.get(gameID).availableCardsCache = availableCards;
         // Выданные карты сохраняются в базу
         final List<CardData> forDefenceCardData = forDefence
                 .stream()
@@ -337,8 +346,7 @@ public class GameService {
             }
         });
         cardManager.deletePool(gameID);
-        currentMoveStates.remove(gameID);
-        gameMovesCache.remove(gameID);
+        matchContexts.remove(gameID);
         me.markAsCompletion();
         other.markAsCompletion();
         me.close();
@@ -362,7 +370,9 @@ public class GameService {
                 gameplaySettings.getMaxCastleHP()
         );
         // Создаем кэш для новой игры
-        gameMovesCache.put(gameID, new ConcurrentLinkedDeque<>());
+        final MatchContext ctx = new MatchContext();
+        ctx.state = MatchContext.State.CHOSING_CARDS;
+        matchContexts.put(gameID, ctx);
 
         cardManager.initPool(gameID);
         // Выделяются карты для выбора
@@ -425,6 +435,9 @@ public class GameService {
             throw new NullPointerException();
         }
         final UUID gameID = me.getGameID();
+        if(matchContexts.get(gameID).state != MatchContext.State.CHOSING_CARDS){
+            return;
+        }
         if(!setChosenCards(gameID, side, clientData.getCards())){
             return;
         }
@@ -450,11 +463,11 @@ public class GameService {
         // Рассчет хода
         MoveProcessor.processMove(gameplaySettings, cards, move);
         // Запишем результаты в кэш
-        if(!gameMovesCache.containsKey(gameID)){
+        if(!matchContexts.containsKey(gameID)){
             // Если вдруг каким то странным и непонятным образом не будет записи
-            gameMovesCache.put(gameID, new ConcurrentLinkedDeque<>());
+            matchContexts.put(gameID, new MatchContext());
         }
-        gameMovesCache.get(gameID).offer(move);
+        matchContexts.get(gameID).gameMovesCache.offer(move);
 
         // Собираем результаты хода
         final List<UnitData> units = new LinkedList<>();
@@ -482,7 +495,7 @@ public class GameService {
                             p.getCurrentHP(),
                             new PointData(p.getStartPoint())))
                 .collect(Collectors.toList());
-
+        matchContexts.get(gameID).state = MatchContext.State.RENDERING;
         // Запись в базу информации о ходе(следующему пригодится)
         completeMove(gameID, move, units, alive, actions);
         // Возвращаем клиенту все что насчитали
@@ -516,6 +529,9 @@ public class GameService {
         if(move == null){
             throw new NullPointerException("Потерялся последний ход");
         }
+        if(matchContexts.get(gameID).state != MatchContext.State.RENDERING) {
+            return;
+        }
 
         if(move.getCurrentCastleHP() <= 0){
             // Разбили замок, завершаем игру с победой атакующего
@@ -541,6 +557,7 @@ public class GameService {
             final CardsForNextMoveGameServerData cardDefenceData =
                     new CardsForNextMoveGameServerData(gameID, forDefenceCardData);
 
+            matchContexts.get(gameID).state = MatchContext.State.CHOSING_CARDS;
             if(side == Side.ATTACKER){
                 me.send(mapper.writeValueAsString(cardAttackData));
                 other.send(mapper.writeValueAsString(cardDefenceData));
@@ -615,10 +632,7 @@ public class GameService {
             if (gameID != null) {
                 cardManager.deletePool(gameID);
             }
-            chosenCardsCache.remove(gameID);
-            availableCardsCache.remove(gameID);
-            currentMoveStates.remove(gameID);
-            gameMovesCache.remove(gameID);
+            matchContexts.remove(gameID);
         } catch(IOException
                 | InterruptedException e) {
             e.printStackTrace();
@@ -671,10 +685,7 @@ public class GameService {
         me.onReceive(null);
         other.onReceive(null);
         cardManager.deletePool(gameID);
-        chosenCardsCache.remove(gameID);
-        availableCardsCache.remove(gameID);
-        currentMoveStates.remove(gameID);
-        gameMovesCache.remove(gameID);
+        matchContexts.remove(gameID);
         try {
             me.close();
             other.close();
