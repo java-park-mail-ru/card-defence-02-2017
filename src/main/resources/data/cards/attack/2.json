@@ -2,9 +2,9 @@
     "type": "com.kvteam.backend.gameplay.Card",
     "alias": "b",
     "side": "ATTACKER",
-    "maxHP": 10,
+    "maxHP": 20,
     "attack": 5,
     "timeAttack": 300,
-    "range": 0.1,
-    "velocity": 0.2
+    "range": 0.2,
+    "velocity": 0.3
 }
