@@ -133,12 +133,12 @@ public class TimeoutService {
     private void checkTimeouts() {
         addIfNeeded();
         deleteIfNeeded();
-
+        final Long currTime = System.currentTimeMillis();
         final Map<Long, TimeoutConnectionPair> timedOut =
-                timeouts.headMap(System.currentTimeMillis());
+                timeouts.headMap(currTime);
         if(!timedOut.isEmpty()) {
             timedOut.values().forEach(this::callTimeouts);
-            timedOut.forEach((k, v) -> timeouts.remove(k, v));
+            timedOut.clear();
         }
     }
 
