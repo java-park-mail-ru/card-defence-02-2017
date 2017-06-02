@@ -7,9 +7,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
+import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 /**
  * Created by maxim on 23.05.17.
@@ -57,7 +61,7 @@ public class TimeoutService {
     private static final int TIMEOUT_CHECK_STEP = 1;
 
     private ScheduledExecutorService timeoutExecutorService;
-    private LinkedList<TimeoutConnectionPair> timeouts;
+    private TreeMap<Long, TimeoutConnectionPair> timeouts;
     private LinkedList<TimeoutConnectionPair> toInsert;
     private LinkedList<TimeoutConnectionPair> toDelete;
     private Semaphore addSemaphore;
@@ -77,7 +81,7 @@ public class TimeoutService {
                     TIMEOUT_CHECK_STEP,
                     TIMEOUT_CHECK_STEP,
                     TimeUnit.SECONDS);
-            timeouts = new LinkedList<>();
+            timeouts = new TreeMap<>();
             toInsert = new LinkedList<>();
             toDelete = new LinkedList<>();
             addSemaphore = new Semaphore(1);
@@ -130,20 +134,11 @@ public class TimeoutService {
         addIfNeeded();
         deleteIfNeeded();
 
-        final LinkedList<TimeoutConnectionPair> callClose = new LinkedList<>();
-        if(!timeouts.isEmpty()) {
-            final LinkedList<TimeoutConnectionPair> newTimeouts = new LinkedList<>();
-            for(TimeoutConnectionPair pair: timeouts) {
-                if(pair.getTimeout() < System.currentTimeMillis()) {
-                    callClose.add(pair);
-                } else {
-                    newTimeouts.addLast(pair);
-                }
-            }
-            timeouts = newTimeouts;
-        }
-        if(!callClose.isEmpty()) {
-            callClose.forEach(this::callTimeouts);
+        final Map<Long, TimeoutConnectionPair> timedOut =
+                timeouts.headMap(System.currentTimeMillis());
+        if(!timedOut.isEmpty()) {
+            timedOut.values().forEach(this::callTimeouts);
+            timedOut.forEach((k, v) -> timeouts.remove(k, v));
         }
     }
 
@@ -170,7 +165,13 @@ public class TimeoutService {
     private void addIfNeeded() {
         try {
             addSemaphore.acquire();
-            timeouts.addAll(toInsert);
+            timeouts.putAll(toInsert
+                .stream()
+                .collect(Collectors.toMap(
+                        TimeoutConnectionPair::getTimeout,
+                        v -> v
+                ))
+            );
             toInsert.clear();
         } catch (InterruptedException e) {
             logger.error("lock exception", e);
@@ -183,7 +184,9 @@ public class TimeoutService {
         try {
             // Семафор на таймаутс уже должен стоять
             deleteSemaphore.acquire();
-            timeouts.removeAll(toDelete);
+            for(TimeoutConnectionPair pair: toDelete) {
+                timeouts.remove(pair.getTimeout(), pair);
+            }
             toDelete.clear();
         } catch (InterruptedException e) {
             logger.error("lock exception", e);
