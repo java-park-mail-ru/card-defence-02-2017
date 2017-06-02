@@ -18,6 +18,7 @@ public class GameServerData extends GameStatusData {
     public static final String DEFENCE_WIN = "defence_win";
     public static final String ATTACK_WIN = "attack_win";
     public static final String SEND_CHAT_MESSAGE = "send_chat_message";
+    public static final String TIMEOUT = "timeout";
 
     @JsonCreator
     public GameServerData(

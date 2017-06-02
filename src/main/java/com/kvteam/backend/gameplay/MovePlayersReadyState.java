@@ -24,6 +24,14 @@ public class MovePlayersReadyState {
         defenceReady = true;
     }
 
+    public boolean getAttackReady(){
+         return attackReady;
+    }
+
+    public boolean getDefenceReady(){
+        return defenceReady;
+    }
+
     public void setAttackRenderComplete(){
         attackRenderComplete = true;
     }

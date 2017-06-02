@@ -8,6 +8,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -24,6 +25,8 @@ public class PlayerConnection
     private BiConsumer<IPlayerConnection, String> onReceiveEvent;
     private BiConsumer<IPlayerConnection, CloseStatus> onCloseEvent;
 
+    private Semaphore semaphore;
+
     public PlayerConnection(
             @NotNull String username,
             @NotNull WebSocketSession session
@@ -31,6 +34,7 @@ public class PlayerConnection
         this.username = username;
         this.session = session;
         this.connectionStatus = ConnectionStatus.ESTABLISHING;
+        this.semaphore = new Semaphore(1, true);
     }
 
     private void changeStatus(
@@ -48,6 +52,12 @@ public class PlayerConnection
             throw new IllegalStateException(
                     "Менять состояния подключения можно только последовательно");
         }
+    }
+
+    @NotNull
+    @Override
+    public Semaphore getSemaphore(){
+        return semaphore;
     }
 
     @Override
@@ -136,5 +146,16 @@ public class PlayerConnection
     @Override
     public boolean isClosed(){
         return !session.isOpen();
+    }
+
+    @Override
+    public String toString() {
+        return session.getId();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return (o instanceof IPlayerConnection)
+                && session.toString().equals(o.toString());
     }
 }

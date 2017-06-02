@@ -109,37 +109,33 @@ public class MatchmakingService {
         }
     }
 
-    private Map<String, IPlayerConnection> separateSides(List<IPlayerConnection> players) {
-        final Map<String, IPlayerConnection> separated = new HashMap<>();
-        final IPlayerConnection attack = players
+    private static IPlayerConnection getPlayerWithSide(List<IPlayerConnection> players, String side) {
+        return players
                 .stream()
-                .filter(p -> p.getMatchmakingSide() != null
-                        && (p.getMatchmakingSide().equals("attack") || p.getMatchmakingSide().equals("all")))
+                .filter(p -> p.getMatchmakingSide() != null && p.getMatchmakingSide().equals(side))
                 .findFirst()
                 .orElse(null);
-        if(attack != null) {
-            //noinspection ObjectEquality
-            final IPlayerConnection defence =
-                    players.get(0) == attack ?
-                            players.get(1) :
-                            players.get(0);
+    }
+
+    private Map<String, IPlayerConnection> separateSides(List<IPlayerConnection> players) {
+        final Map<String, IPlayerConnection> separated = new HashMap<>();
+        final IPlayerConnection attack = getPlayerWithSide(players, "attack");
+        final IPlayerConnection defence = getPlayerWithSide(players, "defence");
+        if(attack != null && defence != null) {
             separated.put("attack", attack);
             separated.put("defence", defence);
-        } else {
-            final IPlayerConnection defence = players
-                    .stream()
-                    .filter(p -> p.getMatchmakingSide() != null
-                            && (p.getMatchmakingSide().equals("defence")))
-                    .findFirst()
-                    .orElse(null);
-
-            //noinspection ObjectEquality
-            final IPlayerConnection other =
-                    players.get(0) == attack ?
-                            players.get(1) :
-                            players.get(0);
-            separated.put("attack", other);
+        } else if (attack != null) {
+            separated.put("attack", attack);
+            separated.put("defence", getPlayerWithSide(players, "all"));
+        } else if (defence != null) {
+            separated.put("attack", getPlayerWithSide(players, "all"));
             separated.put("defence", defence);
+        } else {
+            final Random rand = new Random();
+            final int attackIndex = rand.nextBoolean() ? 1 : 0;
+            final int defenceIndex = attackIndex == 1 ? 0 : 1;
+            separated.put("attack", players.get(attackIndex));
+            separated.put("defence", players.get(defenceIndex));
         }
         return separated;
     }

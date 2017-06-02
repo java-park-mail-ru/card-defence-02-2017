@@ -17,21 +17,24 @@ public class UserData {
     private String email = null;
     @Nullable
     private Integer rating = 0;
-    @Nullable
-    private Integer level = 1;
 
     /**
      * Объект с информацией о достижениях(уровень и рейтинг)
      */
     public UserData(
             @Nullable String username,
-            @Nullable Integer rating,
-            @Nullable Integer level) {
+            @Nullable Integer rating) {
         this.username = username;
         this.password = null;
         this.email = null;
         this.rating = rating;
-        this.level = level;
+    }
+
+    public UserData(
+            @Nullable String username,
+            @Nullable String password) {
+        this.username = username;
+        this.password = password;
     }
 
     /**
@@ -40,13 +43,11 @@ public class UserData {
     public UserData(
             @Nullable String username,
             @Nullable String email,
-            @Nullable Integer rating,
-            @Nullable Integer level) {
+            @Nullable Integer rating) {
         this.username = username;
         this.password = null;
         this.email = email;
         this.rating = rating;
-        this.level = level;
     }
 
     /**
@@ -57,13 +58,11 @@ public class UserData {
             @JsonProperty("username") @Nullable String username,
             @JsonProperty("password") @Nullable String password,
             @JsonProperty("email") @Nullable String email,
-            @JsonProperty("rating") @Nullable Integer rating,
-            @JsonProperty("level") @Nullable Integer level) {
+            @JsonProperty("rating") @Nullable Integer rating) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.rating = rating;
-        this.level = level;
     }
 
     @Nullable
@@ -86,8 +85,4 @@ public class UserData {
         return rating;
     }
 
-    @Nullable
-    public Integer getLevel(){
-        return level;
-    }
 }

@@ -43,11 +43,13 @@ public class MatchmakingServiceTest {
     private CardManager cardManager;
     @Autowired
     private GameplaySettings settings;
+    @Autowired
+    private TimeoutService timeoutService;
 
     @Before
     public void setup() throws SQLException{
         MockitoAnnotations.initMocks(this);
-        final GameService gameService = new GameService(objectMapper, gameDbService, cardManager, settings);
+        final GameService gameService = new GameService(objectMapper, gameDbService, cardManager, settings, timeoutService);
 
         matchmakingService = new MatchmakingService(gameService);
 

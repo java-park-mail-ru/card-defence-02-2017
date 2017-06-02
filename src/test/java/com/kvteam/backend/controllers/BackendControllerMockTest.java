@@ -74,8 +74,7 @@ public class BackendControllerMockTest {
                 username,
                 passwd,
                 username + "@mail.ru",
-                0,
-                1
+                0
         );
         when(
                 accountService.add(anyObject())
@@ -102,7 +101,7 @@ public class BackendControllerMockTest {
                     throws Exception{
         when(
                 accountService.get(eq(username))
-        ).thenReturn(expectedEmail == null ? null : new UserData(username, expectedEmail,0,1));
+        ).thenReturn(expectedEmail == null ? null : new UserData(username, expectedEmail,0));
         final MvcResult result = mockMvc
                 .perform(
                         get("/api/account/" + username)
@@ -128,8 +127,7 @@ public class BackendControllerMockTest {
                 null,
                 password,
                 email,
-                null,
-                null
+                0
         );
         final String username = session.getAttribute("username") != null ?
                 session.getAttribute("username").toString() :
@@ -168,8 +166,7 @@ public class BackendControllerMockTest {
                 username,
                 password,
                 null,
-                null,
-                null
+                0
         );
         when(
                 accountService.login(

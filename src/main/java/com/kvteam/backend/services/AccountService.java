@@ -18,7 +18,8 @@ public class AccountService {
     static final String SQL_GET_USER =
             "select\n" +
             "  username,\n" +
-            "  email\n" +
+            "  email,\n" +
+            "  rating\n" +
             "from users\n" +
             "where username = ?;";
 
@@ -78,9 +79,9 @@ public class AccountService {
     static final String SQL_GET_LEADERS =
             "select \n" +
             "  u.username,\n" +
-            "  0 as level,\n" +
-            "  1 as rating\n" +
+            "  u.rating\n" +
             "from users u\n" +
+            "order by u.rating desc\n" +
             "limit ?;";
 
     static final String SQL_DELETE_OLD_SESSIONS =
@@ -106,8 +107,7 @@ public class AccountService {
                         new UserData(
                             resultSet.getString("username"),
                             resultSet.getString("email"),
-                            0,
-                            1
+                            resultSet.getInt("rating")
                         )
         );
         return !result.isEmpty() ? result.get(0) : null;
@@ -204,8 +204,7 @@ public class AccountService {
                 (resultSet, i) ->
                         new UserData(
                                 resultSet.getString("username"),
-                                resultSet.getInt("rating"),
-                                resultSet.getInt("level")
+                                resultSet.getInt("rating")
                         )
         );
     }

@@ -50,8 +50,7 @@ public class AccountServiceTest {
                         username,
                         "passwd",
                         username + "@mail.ru",
-                        null,
-                        null
+                        0
                 )
         );
     }
