@@ -8,6 +8,8 @@ import com.kvteam.backend.gameplay.*;
 import com.kvteam.backend.websockets.IPlayerConnection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +40,8 @@ public class GameService {
         public List<Card> chosenCardsCache;
         public State state;
     }
+
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private ObjectMapper mapper;
     private GameDbService dbService;
@@ -143,7 +147,7 @@ public class GameService {
             attacker.send(msg);
             defender.send(msg);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("sending exception", e);
         }
 
         try {
@@ -152,7 +156,7 @@ public class GameService {
                     attacker,
                     defender );
         } catch (RuntimeException | IOException e) {
-            e.printStackTrace();
+            logger.error("complete match exception", e);
         }
     }
 
@@ -306,7 +310,7 @@ public class GameService {
                         mapper.writeValueAsString(forDefenceCardData)
                 );
             } catch (JsonProcessingException e) {
-                e.printStackTrace();
+                logger.error("json exception", e);
             }
         });
     }
@@ -327,7 +331,7 @@ public class GameService {
                         mapper.writeValueAsString(alive),
                         mapper.writeValueAsString(actions));
             } catch (JsonProcessingException e) {
-                e.printStackTrace();
+                logger.error("json exception", e);
             }
         });
     }
@@ -342,7 +346,7 @@ public class GameService {
                 dbService.completeMatch(gameID, winner);
                 dbService.updateRating(gameID);
             }catch(SQLException e){
-                e.printStackTrace();
+                logger.error("sql exception", e);
             }
         });
         cardManager.deletePool(gameID);
@@ -410,6 +414,7 @@ public class GameService {
         attacker.markAsPlaying(gameID);
         defender.markAsPlaying(gameID);
         timeoutService.tryAddToTimeouts(attacker, defender);
+        logger.info("start_game", attacker.getUsername() + " vs " + defender.getUsername());
     }
 
     private void processChatMessage(
@@ -578,7 +583,7 @@ public class GameService {
             me.close();
             other.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("closing sockets error", e);
         }
     }
 
@@ -635,7 +640,7 @@ public class GameService {
             matchContexts.remove(gameID);
         } catch(IOException
                 | InterruptedException e) {
-            e.printStackTrace();
+            logger.error("closing exception", e);
         } finally {
             releaseMeAndOther(me, other, side);
         }
@@ -668,7 +673,7 @@ public class GameService {
             Exception e,
             IPlayerConnection me,
             IPlayerConnection other){
-        e.printStackTrace();
+        logger.error("critical exception", e);
         final UUID gameID = me.getGameID() != null ?
                 me.getGameID() :
                 UUID.fromString("00000000-0000-0000-0000-000000000000");
@@ -676,7 +681,7 @@ public class GameService {
             final ErrorGameServerData data = new ErrorGameServerData(gameID);
             me.send(mapper.writeValueAsString(data));
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") IOException jpe){
-            jpe.printStackTrace();
+            logger.error("critical exception", jpe);
         }
         me.markAsErrorable();
         other.markAsErrorable();
@@ -690,7 +695,7 @@ public class GameService {
             me.close();
             other.close();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            logger.error("critical exception", ex);
         }
     }
 

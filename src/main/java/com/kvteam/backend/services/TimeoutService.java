@@ -2,6 +2,8 @@ package com.kvteam.backend.services;
 
 import com.kvteam.backend.gameplay.GameplaySettings;
 import com.kvteam.backend.websockets.IPlayerConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
@@ -35,24 +37,30 @@ public class TimeoutService {
             return timeout;
         }
 
-        @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
         @Override
         public boolean equals(Object o) {
-            return (attacker.toString() + defender.toString()).equals(o.toString());
+            return o instanceof TimeoutConnectionPair
+                    && ((TimeoutConnectionPair) o).attacker == attacker
+                    && ((TimeoutConnectionPair) o).defender == defender;
         }
 
         @Override
         public int hashCode() {
-            return (attacker.toString() + defender.toString()).hashCode();
+            int result = attacker != null ? attacker.hashCode() : 0;
+            result = 31 * result + (defender != null ? defender.hashCode() : 0);
+            result = 31 * result + (int) (timeout ^ (timeout >>> 32));
+            return result;
         }
     }
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private static final int TIMEOUT_CHECK_STEP = 1;
 
     private ScheduledExecutorService timeoutExecutorService;
     private LinkedList<TimeoutConnectionPair> timeouts;
-    private LinkedList<String> toDelete;
-    private Semaphore semaphore;
+    private LinkedList<TimeoutConnectionPair> toInsert;
+    private LinkedList<TimeoutConnectionPair> toDelete;
+    private Semaphore addSemaphore;
     private Semaphore deleteSemaphore;
 
     private BiConsumer<IPlayerConnection, IPlayerConnection> timeoutCallback;
@@ -70,8 +78,9 @@ public class TimeoutService {
                     TIMEOUT_CHECK_STEP,
                     TimeUnit.SECONDS);
             timeouts = new LinkedList<>();
+            toInsert = new LinkedList<>();
             toDelete = new LinkedList<>();
-            semaphore = new Semaphore(1);
+            addSemaphore = new Semaphore(1);
             deleteSemaphore = new Semaphore(1);
         }
     }
@@ -92,12 +101,12 @@ public class TimeoutService {
         if (timeoutExecutorService != null && timeouts != null) {
             final long timeout = System.currentTimeMillis() + offset * 1000;
             try {
-                semaphore.acquire();
-                timeouts.addLast(new TimeoutConnectionPair(timeout, attacker, defender));
+                addSemaphore.acquire();
+                toInsert.addLast(new TimeoutConnectionPair(timeout, attacker, defender));
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                logger.error("lock exception", e);
             } finally {
-                semaphore.release();
+                addSemaphore.release();
             }
         }
     }
@@ -108,9 +117,9 @@ public class TimeoutService {
         if(toDelete != null) {
             try {
                 deleteSemaphore.acquire();
-                toDelete.addLast(attacker.toString() + defender.toString());
+                toDelete.addLast(new TimeoutConnectionPair(0, attacker, defender));
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                logger.error("lock exception", e);
             } finally {
                 deleteSemaphore.release();
             }
@@ -118,27 +127,20 @@ public class TimeoutService {
     }
 
     private void checkTimeouts() {
+        addIfNeeded();
+        deleteIfNeeded();
+
         final LinkedList<TimeoutConnectionPair> callClose = new LinkedList<>();
-        try {
-            semaphore.acquire();
-            deleteIfNeeded();
-
-            if(!timeouts.isEmpty()) {
-                TimeoutConnectionPair pair = timeouts.poll();
-                final TimeoutConnectionPair firstPair = pair;
-                do {
-                    if(pair.getTimeout() < System.currentTimeMillis()) {
-                        callClose.add(pair);
-                    } else {
-                        timeouts.addLast(pair);
-                    }
-                }while(!timeouts.isEmpty() && !(pair = timeouts.poll()).equals(firstPair));
-            }
-
-        } catch (InterruptedException | RuntimeException e) {
-            e.printStackTrace();
-        } finally {
-            semaphore.release();
+        if(!timeouts.isEmpty()) {
+            TimeoutConnectionPair pair = timeouts.poll();
+            final TimeoutConnectionPair firstPair = pair;
+            do {
+                if(pair.getTimeout() < System.currentTimeMillis()) {
+                    callClose.add(pair);
+                } else {
+                    timeouts.addLast(pair);
+                }
+            }while(!timeouts.isEmpty() && !(pair = timeouts.peek()).equals(firstPair));
         }
         if(!callClose.isEmpty()) {
             callClose.forEach(this::callTimeouts);
@@ -154,7 +156,7 @@ public class TimeoutService {
                     try {
                         timeoutCallback.accept(p.getAttacker(), p.getDefender());
                     } catch (RuntimeException e) {
-                        e.printStackTrace();
+                        logger.error("runtime", e);
                     } finally {
                         p.getDefender().getSemaphore().release();
                     }
@@ -165,16 +167,26 @@ public class TimeoutService {
         }
     }
 
+    private void addIfNeeded() {
+        try {
+            addSemaphore.acquire();
+            timeouts.addAll(toInsert);
+            toInsert.clear();
+        } catch (InterruptedException e) {
+            logger.error("lock exception", e);
+        } finally {
+            addSemaphore.release();
+        }
+    }
+
     private void deleteIfNeeded() {
         try {
             // Семафор на таймаутс уже должен стоять
             deleteSemaphore.acquire();
-            // Для корректной работы этой строчки специально
-            // переопределен equals в TimeoutConnectionPair
-            //noinspection SuspiciousMethodCalls
             timeouts.removeAll(toDelete);
+            toDelete.clear();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.error("lock exception", e);
         } finally {
             deleteSemaphore.release();
         }
