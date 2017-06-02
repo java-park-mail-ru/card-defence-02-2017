@@ -132,18 +132,15 @@ public class TimeoutService {
 
         final LinkedList<TimeoutConnectionPair> callClose = new LinkedList<>();
         if(!timeouts.isEmpty()) {
-            TimeoutConnectionPair pair = timeouts.poll();
-            TimeoutConnectionPair firstPair = null;
-            do {
+            final LinkedList<TimeoutConnectionPair> newTimeouts = new LinkedList<>();
+            for(TimeoutConnectionPair pair: timeouts) {
                 if(pair.getTimeout() < System.currentTimeMillis()) {
                     callClose.add(pair);
                 } else {
-                    timeouts.addLast(pair);
-                    if(firstPair == null) {
-                        firstPair = pair;
-                    }
+                    newTimeouts.addLast(pair);
                 }
-            }while(!timeouts.isEmpty() && !(pair = timeouts.peek()).equals(firstPair));
+            }
+            timeouts = newTimeouts;
         }
         if(!callClose.isEmpty()) {
             callClose.forEach(this::callTimeouts);
