@@ -133,12 +133,15 @@ public class TimeoutService {
         final LinkedList<TimeoutConnectionPair> callClose = new LinkedList<>();
         if(!timeouts.isEmpty()) {
             TimeoutConnectionPair pair = timeouts.poll();
-            final TimeoutConnectionPair firstPair = pair;
+            TimeoutConnectionPair firstPair = null;
             do {
                 if(pair.getTimeout() < System.currentTimeMillis()) {
                     callClose.add(pair);
                 } else {
                     timeouts.addLast(pair);
+                    if(firstPair == null) {
+                        firstPair = pair;
+                    }
                 }
             }while(!timeouts.isEmpty() && !(pair = timeouts.peek()).equals(firstPair));
         }
